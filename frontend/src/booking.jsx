@@ -480,7 +480,7 @@ function App() {
 
       {(reserving || confirmedId) && (
         <div onClick={() => { setReserving(null); setConfirmedId(null); }} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 200,
+          position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 200,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
         }}>
           <div onClick={e => e.stopPropagation()} style={{

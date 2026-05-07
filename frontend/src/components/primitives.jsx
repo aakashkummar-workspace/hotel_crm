@@ -142,8 +142,8 @@ export function Modal({ open, onClose, title, children, width = 520, footer }) {
   if (!open) return null;
   return (
     <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
-      backdropFilter: 'blur(4px)', zIndex: 200,
+      position: 'fixed', inset: 0, background: 'var(--bg)',
+      zIndex: 200,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       animation: 'pageEnter .2s',
     }}>
@@ -169,7 +169,7 @@ export function Drawer({ open, onClose, title, children, width = 480, footer }) 
   if (!open) return null;
   return (
     <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)',
+      position: 'fixed', inset: 0, background: 'var(--bg)',
       zIndex: 200,
     }}>
       <div onClick={e => e.stopPropagation()} style={{
