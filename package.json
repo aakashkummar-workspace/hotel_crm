@@ -1,0 +1,25 @@
+{
+  "name": "aurelia-hotel-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aurelia — Heritage Hotel CRM (full-stack: Vite/React + Express/SQLite)",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install --workspaces --include-workspace-root",
+    "dev": "concurrently -k -n backend,frontend -c yellow,cyan \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
+    "start": "npm run start --workspace=backend",
+    "seed": "npm run seed --workspace=backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

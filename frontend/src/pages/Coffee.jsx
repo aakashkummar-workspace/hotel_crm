@@ -1,0 +1,253 @@
+import { useEffect, useMemo, useState } from 'react';
+import Icon from '../components/Icon.jsx';
+import { Modal, Pill, SectionHeader } from '../components/primitives.jsx';
+import { api, downloadCSV, fmtINR } from '../api.js';
+
+function DailyStat({ label, value, sub }) {
+  return (
+    <div className="card" style={{ flex: 1, padding: 14 }}>
+      <div className="label" style={{ marginBottom: 4 }}>{label}</div>
+      <div className="display" style={{ fontSize: 22, color: 'var(--ink)' }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>{sub}</div>
+    </div>
+  );
+}
+
+export default function Coffee({ onToast }) {
+  const [menu, setMenu] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [category, setCategory] = useState('All');
+  const [cart, setCart] = useState([]);
+  const [tableNum, setTableNum] = useState('T2');
+  const [payment, setPayment] = useState('UPI');
+  const [customer, setCustomer] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [showZReport, setShowZReport] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  const refresh = async () => {
+    const [m, o] = await Promise.all([api.coffee.menu(), api.coffee.orders()]);
+    setMenu(m);
+    setOrders(o);
+  };
+  useEffect(() => { refresh(); }, []);
+
+  const categories = useMemo(() => ['All', ...new Set(menu.map(m => m.category))], [menu]);
+  const filtered = menu.filter(m => category === 'All' || m.category === category);
+
+  const addToCart = (item) => {
+    setCart(c => {
+      const ex = c.find(x => x.id === item.id);
+      if (ex) return c.map(x => x.id === item.id ? { ...x, qty: x.qty + 1 } : x);
+      return [...c, { ...item, qty: 1 }];
+    });
+  };
+  const updateQty = (id, delta) => {
+    setCart(c => c.map(x => x.id === id ? { ...x, qty: x.qty + delta } : x).filter(x => x.qty > 0));
+  };
+
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const tax = Math.round(subtotal * 0.05);
+  const total = subtotal + tax;
+  const todayTotal = orders.reduce((s, o) => s + o.total, 0);
+
+  const charge = async () => {
+    if (cart.length === 0) return;
+    setBusy(true);
+    try {
+      const order = await api.coffee.createOrder({
+        items: cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+        table_label: tableNum,
+        payment,
+      });
+      onToast(`Order ${order.id} charged · ${fmtINR(order.total)}${customer ? ` · ${customer}` : ''}`);
+      setCart([]);
+      setCustomer('');
+      refresh();
+    } catch (e) {
+      onToast(e.message || 'Could not charge order');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="page page-enter" style={{ paddingBottom: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <SectionHeader
+        eyebrow="Café"
+        title="Coffee Shop"
+        sub={`${orders.length} orders today · ${fmtINR(todayTotal)} in sales`}
+        right={
+          <div className="row gap-2">
+            <button className="btn" onClick={() => setShowZReport(true)}><Icon name="receipt" size={14} />Z-report</button>
+            <button className="btn" onClick={() => setShowMenu(true)}><Icon name="utensils" size={14} />Menu</button>
+          </div>
+        }
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, flex: 1, minHeight: 0 }}>
+        <div className="col" style={{ minHeight: 0 }}>
+          <div className="row gap-3" style={{ marginBottom: 14, flexShrink: 0 }}>
+            <DailyStat label="Orders today" value={orders.length} sub="+18% vs yesterday" />
+            <DailyStat label="Revenue today" value={fmtINR(todayTotal)} sub={`Avg ${fmtINR(orders.length ? Math.round(todayTotal / orders.length) : 0)} / order`} />
+            <DailyStat label="Top item" value="Cappuccino" sub="14 sold today" />
+          </div>
+
+          <div className="row gap-2" style={{ marginBottom: 16, flexShrink: 0, flexWrap: 'wrap' }}>
+            {categories.map(c => (
+              <button key={c} className="btn btn-sm" onClick={() => setCategory(c)}
+                style={category === c ? { background: 'var(--gold-soft)', borderColor: 'var(--gold-line)', color: 'var(--gold-2)' } : {}}>{c}</button>
+            ))}
+          </div>
+
+          <div style={{ overflowY: 'auto', paddingRight: 8, paddingBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {filtered.map(item => (
+                <button key={item.id} onClick={() => addToCart(item)} className="card"
+                  style={{ padding: 14, textAlign: 'left', border: '1px solid var(--line)', cursor: 'pointer', transition: 'all .15s', background: 'var(--panel)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--gold-line)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ fontSize: 24, marginBottom: 6 }}>{item.emoji}</div>
+                    <div style={{ fontSize: 13, color: 'var(--gold-2)', fontWeight: 500 }}>{fmtINR(item.price)}</div>
+                  </div>
+                  <div style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500, marginTop: 4 }}>{item.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2, lineHeight: 1.4 }}>{item.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="card-elevated col" style={{ minHeight: 0, marginBottom: 24 }}>
+          <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--line)' }}>
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <div className="display" style={{ fontSize: 18 }}>New Order</div>
+              <Pill tone="amber">Open</Pill>
+            </div>
+            <div className="row gap-2" style={{ marginTop: 10 }}>
+              <select className="input" style={{ flex: 1 }} value={tableNum} onChange={e => setTableNum(e.target.value)}>
+                <option>T1</option><option>T2</option><option>T3</option><option>T4</option><option>T5</option>
+                <option>Takeaway</option><option>Room 101</option><option>Room 201</option>
+              </select>
+              <input className="input" placeholder="Customer" style={{ flex: 1 }} value={customer} onChange={e => setCustomer(e.target.value)} />
+            </div>
+          </div>
+
+          {cart.length === 0 ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ textAlign: 'center', color: 'var(--ink-4)' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--bg-3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                  <Icon name="cup" size={20} />
+                </div>
+                <div style={{ fontSize: 13 }}>Tap items to add to order</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+              {cart.map(item => (
+                <div key={item.id} className="row gap-3" style={{ padding: '10px 20px' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--bg-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{item.emoji}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{item.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{fmtINR(item.price)} × {item.qty} = {fmtINR(item.price * item.qty)}</div>
+                  </div>
+                  <div className="row gap-1" style={{ background: 'var(--bg-3)', borderRadius: 8, padding: 2 }}>
+                    <button className="btn btn-ghost btn-icon" style={{ padding: 4 }} onClick={() => updateQty(item.id, -1)}><Icon name="minus" size={12} /></button>
+                    <span style={{ minWidth: 20, textAlign: 'center', fontSize: 13, color: 'var(--ink)', alignSelf: 'center' }}>{item.qty}</span>
+                    <button className="btn btn-ghost btn-icon" style={{ padding: 4 }} onClick={() => updateQty(item.id, 1)}><Icon name="plus" size={12} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ borderTop: '1px solid var(--line)', padding: 20 }}>
+            <div className="col gap-2" style={{ marginBottom: 14 }}>
+              <div className="row" style={{ justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)' }}><span>Subtotal</span><span>{fmtINR(subtotal)}</span></div>
+              <div className="row" style={{ justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)' }}><span>GST (5%)</span><span>{fmtINR(tax)}</span></div>
+              <div className="row" style={{ justifyContent: 'space-between', fontSize: 18, color: 'var(--ink)', paddingTop: 8, borderTop: '1px solid var(--line)' }}>
+                <span className="display">Total</span><span className="display" style={{ color: 'var(--gold-2)' }}>{fmtINR(total)}</span>
+              </div>
+            </div>
+            <div className="row gap-2" style={{ marginBottom: 12 }}>
+              {['UPI', 'Card', 'Cash', 'Room'].map(p => (
+                <button key={p} className="btn btn-sm" style={{ flex: 1, ...(payment === p ? { background: 'var(--gold-soft)', borderColor: 'var(--gold-line)', color: 'var(--gold-2)' } : {}) }} onClick={() => setPayment(p)}>{p}</button>
+              ))}
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', padding: '12px' }} disabled={cart.length === 0 || busy} onClick={charge}>
+              <Icon name="check" size={14} strokeWidth={2.4} />
+              {busy ? 'Charging…' : `Charge ${cart.length > 0 ? fmtINR(total) : ''}`}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <Modal open={showZReport} onClose={() => setShowZReport(false)} title="Z-Report — End of day" width={520}
+        footer={<>
+          <button className="btn btn-ghost" onClick={() => setShowZReport(false)}>Close</button>
+          <button className="btn btn-primary" onClick={() => {
+            downloadCSV(`aurelia-zreport-${new Date().toISOString().slice(0, 10)}.csv`, orders, ['id', 'time', 'items_count', 'total', 'table_label', 'payment']);
+            onToast('Z-report exported');
+          }}>
+            <Icon name="download" size={14} />Export CSV
+          </button>
+        </>}>
+        <div className="col gap-4">
+          <div className="row" style={{ justifyContent: 'space-between', padding: 16, background: 'var(--bg-3)', borderRadius: 12 }}>
+            <div>
+              <div className="label">Total orders</div>
+              <div className="display" style={{ fontSize: 28 }}>{orders.length}</div>
+            </div>
+            <div>
+              <div className="label">Total revenue</div>
+              <div className="display" style={{ fontSize: 28, color: 'var(--gold-2)' }}>{fmtINR(todayTotal)}</div>
+            </div>
+            <div>
+              <div className="label">Avg order</div>
+              <div className="display" style={{ fontSize: 28 }}>{orders.length ? fmtINR(Math.round(todayTotal / orders.length)) : '—'}</div>
+            </div>
+          </div>
+          <div>
+            <div className="label" style={{ marginBottom: 8 }}>Payment method breakdown</div>
+            {['UPI', 'Card', 'Cash', 'Room'].map(m => {
+              const r = orders.filter(o => o.payment.startsWith(m));
+              const total = r.reduce((s, o) => s + o.total, 0);
+              return (
+                <div key={m} className="row" style={{ justifyContent: 'space-between', fontSize: 13, padding: '6px 0' }}>
+                  <span style={{ color: 'var(--ink-2)' }}>{m} <span style={{ color: 'var(--ink-4)' }}>({r.length})</span></span>
+                  <span style={{ color: 'var(--gold-2)', fontWeight: 500 }}>{fmtINR(total)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={showMenu} onClose={() => setShowMenu(false)} title="Café menu" width={620}>
+        <div className="col gap-3">
+          {categories.filter(c => c !== 'All').map(cat => {
+            const items = menu.filter(m => m.category === cat);
+            return (
+              <div key={cat}>
+                <div className="label" style={{ marginBottom: 8 }}>{cat}</div>
+                {items.map(item => (
+                  <div key={item.id} className="row" style={{ justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                    <div className="row gap-3">
+                      <span style={{ fontSize: 18 }}>{item.emoji}</span>
+                      <div>
+                        <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{item.description}</div>
+                      </div>
+                    </div>
+                    <div style={{ color: 'var(--gold-2)', fontWeight: 500, fontSize: 13 }}>{fmtINR(item.price)}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </Modal>
+    </div>
+  );
+}

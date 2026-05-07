@@ -1,0 +1,12 @@
+node_modules
+dist
+.DS_Store
+.env
+.env.local
+backend/data/*.db
+backend/data/*.db-shm
+backend/data/*.db-wal
+*.log
+.vscode/
+.idea/
+_design_source/
