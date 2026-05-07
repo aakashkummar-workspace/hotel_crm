@@ -93,8 +93,8 @@ export default function Dashboard({ onNavigate, onToast }) {
   const checkIn = async (b) => {
     setBusyId(b.id);
     try {
+      // Backend now syncs room status automatically when booking status changes
       await api.bookings.update(b.id, { status: 'checked-in' });
-      await api.rooms.update(b.room, { status: 'occupied', guest: b.guest, checkout: b.checkout });
       onToast?.(`${b.guest} checked into Room ${b.room}`);
       await refresh();
     } catch (e) { onToast?.(e.message || 'Could not check in'); }

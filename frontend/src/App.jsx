@@ -55,6 +55,7 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [tweaks, setTweaks] = useState(loadTweaks);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [bookingPrefill, setBookingPrefill] = useState(null);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -102,11 +103,15 @@ export default function App() {
     return <Login onSuccess={(u) => { setUser(u); setToast(`Welcome back, ${u.name.split(' ')[0]}`); }} />;
   }
 
-  const props = { onNavigate: setPage, onToast: setToast };
+  const navigateWithPrefill = (target, prefill) => {
+    setBookingPrefill(prefill || null);
+    setPage(target);
+  };
+  const props = { onNavigate: setPage, onToast: setToast, onNavigateWithPrefill: navigateWithPrefill };
   const pageEl = {
     dashboard: <Dashboard {...props} />,
     rooms: <Rooms {...props} />,
-    bookings: <Bookings {...props} />,
+    bookings: <Bookings {...props} prefill={bookingPrefill} onPrefillConsumed={() => setBookingPrefill(null)} />,
     coffee: <Coffee {...props} />,
     hall: <Hall {...props} />,
     expenses: <Expenses {...props} />,

@@ -29,6 +29,42 @@ const createSchema = z.object({
   status: z.enum(['pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled']).default('confirmed'),
 });
 
+function upsertGuestFromBooking({ guest, email, phone, amount }) {
+  if (!guest) return;
+  const existing = db.prepare('SELECT * FROM guests WHERE LOWER(name) = LOWER(?)').get(guest);
+  if (existing) {
+    db.prepare('UPDATE guests SET visits = visits + 1, lifetime = lifetime + ?, email = COALESCE(NULLIF(?, \'\'), email), phone = COALESCE(NULLIF(?, \'\'), phone) WHERE id = ?')
+      .run(amount || 0, email ?? '', phone ?? '', existing.id);
+  } else {
+    const last = db.prepare(`SELECT id FROM guests WHERE id LIKE 'G-%' ORDER BY id DESC LIMIT 1`).get();
+    const n = last ? Number(last.id.slice(2)) + 1 : 1;
+    const id = `G-${String(n).padStart(3, '0')}`;
+    db.prepare('INSERT INTO guests (id, name, email, phone, visits, lifetime, status) VALUES (?, ?, ?, ?, 1, ?, ?)')
+      .run(id, guest, email || null, phone || null, amount || 0, 'new');
+  }
+}
+
+function syncRoomFromBooking(booking) {
+  const room = db.prepare('SELECT * FROM rooms WHERE num = ?').get(booking.room);
+  if (!room) return;
+  let next = { status: room.status, guest: room.guest, checkin: room.checkin, checkout: room.checkout };
+  if (booking.status === 'checked-in') {
+    next = { status: 'occupied', guest: booking.guest, checkin: booking.checkin, checkout: booking.checkout };
+  } else if (booking.status === 'confirmed' || booking.status === 'pending') {
+    if (room.status === 'available') {
+      next = { status: 'reserved', guest: booking.guest, checkin: booking.checkin, checkout: booking.checkout };
+    }
+  } else if (booking.status === 'checked-out') {
+    next = { status: 'cleaning', guest: null, checkin: null, checkout: null };
+  } else if (booking.status === 'cancelled') {
+    if (room.status === 'reserved' && room.guest === booking.guest) {
+      next = { status: 'available', guest: null, checkin: null, checkout: null };
+    }
+  }
+  db.prepare('UPDATE rooms SET status = ?, guest = ?, checkin = ?, checkout = ? WHERE num = ?')
+    .run(next.status, next.guest, next.checkin, next.checkout, booking.room);
+}
+
 router.post('/', (req, res, next) => {
   try {
     const body = createSchema.parse(req.body);
@@ -37,11 +73,16 @@ router.post('/', (req, res, next) => {
     ).get();
     const next = lastNumeric ? Number(lastNumeric.id.slice(3)) + 1 : 2851;
     const id = `BK-${next}`;
-    db.prepare(
-      `INSERT INTO bookings (id, guest, phone, email, room, checkin, checkout, nights, amount, status, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, body.guest, body.phone ?? null, body.email ?? null, body.room, body.checkin, body.checkout, body.nights, body.amount, body.status, body.source);
-    logActivity(req.user?.name, 'Created booking', `${id} · ${body.guest}`);
+    const tx = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO bookings (id, guest, phone, email, room, checkin, checkout, nights, amount, status, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(id, body.guest, body.phone ?? null, body.email ?? null, body.room, body.checkin, body.checkout, body.nights, body.amount, body.status, body.source);
+      upsertGuestFromBooking({ guest: body.guest, email: body.email, phone: body.phone, amount: body.amount });
+      syncRoomFromBooking({ ...body, id });
+      logActivity(req.user?.name, 'Created booking', `${id} · ${body.guest}`);
+    });
+    tx();
     res.status(201).json(db.prepare('SELECT * FROM bookings WHERE id = ?').get(id));
   } catch (e) { next(e); }
 });
@@ -62,18 +103,35 @@ router.patch('/:id', (req, res, next) => {
     const existing = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
     if (!existing) throw new HttpError(404, 'Booking not found');
     const merged = { ...existing, ...body };
-    db.prepare(
-      `UPDATE bookings SET guest = ?, phone = ?, email = ?, room = ?, checkin = ?, checkout = ?, nights = ?, amount = ?, status = ?, source = ? WHERE id = ?`
-    ).run(merged.guest, merged.phone, merged.email, merged.room, merged.checkin, merged.checkout, merged.nights, merged.amount, merged.status, merged.source, req.params.id);
+    const tx = db.transaction(() => {
+      db.prepare(
+        `UPDATE bookings SET guest = ?, phone = ?, email = ?, room = ?, checkin = ?, checkout = ?, nights = ?, amount = ?, status = ?, source = ? WHERE id = ?`
+      ).run(merged.guest, merged.phone, merged.email, merged.room, merged.checkin, merged.checkout, merged.nights, merged.amount, merged.status, merged.source, req.params.id);
+      if (body.status && body.status !== existing.status) {
+        syncRoomFromBooking(merged);
+        logActivity(req.user?.name, 'Updated booking status', `${req.params.id} → ${body.status}`);
+      }
+    });
+    tx();
     res.json(db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id));
   } catch (e) { next(e); }
 });
 
 router.delete('/:id', (req, res, next) => {
   try {
-    const r = db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
-    if (r.changes === 0) throw new HttpError(404, 'Booking not found');
-    logActivity(req.user?.name, 'Deleted booking', req.params.id);
+    const existing = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+    if (!existing) throw new HttpError(404, 'Booking not found');
+    const tx = db.transaction(() => {
+      db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
+      // free the room if it was reserved for this booking
+      const room = db.prepare('SELECT * FROM rooms WHERE num = ?').get(existing.room);
+      if (room && room.status === 'reserved' && room.guest === existing.guest) {
+        db.prepare('UPDATE rooms SET status = ?, guest = NULL, checkin = NULL, checkout = NULL WHERE num = ?')
+          .run('available', existing.room);
+      }
+      logActivity(req.user?.name, 'Deleted booking', `${req.params.id} · ${existing.guest}`);
+    });
+    tx();
     res.status(204).end();
   } catch (e) { next(e); }
 });

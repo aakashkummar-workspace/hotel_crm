@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { db } from '../db.js';
+import { db, logActivity } from '../db.js';
 
 const router = Router();
 
@@ -45,12 +45,25 @@ router.post('/enquiries', (req, res, next) => {
     const last = db.prepare(`SELECT id FROM bookings WHERE id LIKE 'BK-%' ORDER BY id DESC LIMIT 1`).get();
     const next = last ? Number(last.id.slice(3)) + 1 : 2851;
     const id = `BK-${next}`;
-    db.prepare(
-      `INSERT INTO bookings (id, guest, phone, email, room, checkin, checkout, nights, amount, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      id, body.name, body.phone, body.email ?? null, body.room_type || 'TBD',
-      body.checkin, body.checkout, body.nights, body.amount ?? 0, 'pending', 'Direct'
-    );
+    const tx = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO bookings (id, guest, phone, email, room, checkin, checkout, nights, amount, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        id, body.name, body.phone, body.email ?? null, body.room_type || 'TBD',
+        body.checkin, body.checkout, body.nights, body.amount ?? 0, 'pending', 'Direct'
+      );
+      // upsert guest
+      const existing = db.prepare('SELECT id FROM guests WHERE LOWER(name) = LOWER(?)').get(body.name);
+      if (!existing) {
+        const lastG = db.prepare(`SELECT id FROM guests WHERE id LIKE 'G-%' ORDER BY id DESC LIMIT 1`).get();
+        const n = lastG ? Number(lastG.id.slice(2)) + 1 : 1;
+        const gid = `G-${String(n).padStart(3, '0')}`;
+        db.prepare('INSERT INTO guests (id, name, email, phone, visits, lifetime, status, note) VALUES (?, ?, ?, ?, 0, 0, ?, ?)')
+          .run(gid, body.name, body.email ?? null, body.phone, 'new', 'Submitted enquiry from public booking page.');
+      }
+      logActivity('Public site', 'New booking enquiry', `${id} · ${body.name}`);
+    });
+    tx();
     res.status(201).json({ id, message: 'We will be in touch within 12 hours.' });
   } catch (e) { next(e); }
 });

@@ -8,7 +8,7 @@ const blankForm = {
   checkin: '', checkout: '', source: 'Direct', guests: 2,
 };
 
-export default function Bookings({ onToast }) {
+export default function Bookings({ onToast, prefill, onPrefillConsumed }) {
   const [tab, setTab] = useState('all');
   const [showNew, setShowNew] = useState(false);
   const [bookings, setBookings] = useState([]);
@@ -20,11 +20,23 @@ export default function Bookings({ onToast }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [selected, setSelected] = useState([]);
 
-  const refresh = () => api.bookings.list().then(setBookings);
+  const refreshAll = async () => {
+    const [b, r] = await Promise.all([api.bookings.list(), api.rooms.list()]);
+    setBookings(b);
+    setRooms(r.rooms);
+    setTypes(r.types);
+  };
+  const refresh = refreshAll;
+  useEffect(() => { refreshAll(); }, []);
+
+  // Receive pre-fill from CRM "New booking"
   useEffect(() => {
-    refresh();
-    api.rooms.list().then(({ rooms, types }) => { setRooms(rooms); setTypes(types); });
-  }, []);
+    if (prefill) {
+      setForm(f => ({ ...f, ...prefill }));
+      setShowNew(true);
+      onPrefillConsumed?.();
+    }
+  }, [prefill]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sources = ['all', ...new Set(bookings.map(b => b.source))];
   const filtered = bookings
@@ -44,8 +56,6 @@ export default function Bookings({ onToast }) {
   const setStatus = async (b, status) => {
     try {
       await api.bookings.update(b.id, { status });
-      if (status === 'checked-in') await api.rooms.update(b.room, { status: 'occupied', guest: b.guest, checkout: b.checkout });
-      if (status === 'checked-out') await api.rooms.update(b.room, { status: 'cleaning', guest: null });
       onToast?.(`${b.id} → ${status}`);
       refresh();
     } catch (e) { onToast?.(e.message || 'Could not update'); }

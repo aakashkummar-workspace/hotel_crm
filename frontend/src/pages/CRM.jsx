@@ -28,7 +28,7 @@ function CommItem({ icon, who, msg }) {
   );
 }
 
-export default function CRM({ onNavigate, onToast }) {
+export default function CRM({ onNavigate, onToast, onNavigateWithPrefill }) {
   const [guests, setGuests] = useState([]);
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
@@ -158,7 +158,11 @@ export default function CRM({ onNavigate, onToast }) {
                     onClick={e => { if (!selected.phone) { e.preventDefault(); onToast?.('No phone on file'); } }}>
                     <Icon name="phone" size={16} />
                   </a>
-                  <button className="btn btn-primary" onClick={() => onNavigate?.('bookings')}><Icon name="plus" size={14} />New booking</button>
+                  <button className="btn btn-primary" onClick={() => onNavigateWithPrefill?.('bookings', {
+                    guest: selected.name,
+                    email: selected.email || '',
+                    phone: selected.phone || '',
+                  })}><Icon name="plus" size={14} />New booking</button>
                 </div>
               </div>
             </div>
