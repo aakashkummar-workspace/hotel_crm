@@ -38,6 +38,7 @@ export const api = {
   rooms: {
     list: () => request('/rooms'),
     get: (num) => request(`/rooms/${num}`),
+    available: (checkin, checkout) => request(`/rooms/available?checkin=${encodeURIComponent(checkin)}&checkout=${encodeURIComponent(checkout)}`),
     create: (body) => request('/rooms', { method: 'POST', body }),
     update: (num, body) => request(`/rooms/${num}`, { method: 'PATCH', body }),
     remove: (num) => request(`/rooms/${num}`, { method: 'DELETE' }),

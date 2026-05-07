@@ -334,6 +334,31 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
         }
       />
 
+      {/* Per-type inventory */}
+      <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+        {types.map(t => {
+          const total = t.count || rooms.filter(r => r.type_id === t.id).length;
+          const occupied = rooms.filter(r => r.type_id === t.id && (r.status === 'occupied' || r.status === 'reserved')).length;
+          const free = total - occupied;
+          return (
+            <div key={t.id} className="card" style={{ padding: '10px 14px', minWidth: 180 }}>
+              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>{fmtINR(t.base_price)}/night</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="display" style={{ fontSize: 18, color: free > 0 ? 'var(--gold-2)' : 'var(--ink-4)', lineHeight: 1 }}>
+                    {free}<span style={{ fontSize: 12, color: 'var(--ink-4)', fontFamily: 'var(--font-body)' }}>/{total}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>free</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
         <div className="row gap-2" style={{ flexWrap: 'wrap' }}>
           {[{ id: 'all', label: 'All' }, { id: 'available', label: 'Available', status: 'available' }, { id: 'occupied', label: 'Occupied', status: 'occupied' }, { id: 'reserved', label: 'Reserved', status: 'reserved' }, { id: 'cleaning', label: 'Cleaning', status: 'cleaning' }].map(f => (

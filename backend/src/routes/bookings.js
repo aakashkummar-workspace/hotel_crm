@@ -2,6 +2,20 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { db, logActivity } from '../db.js';
 import { HttpError } from '../middleware/error.js';
+import { toISO, rangesOverlap } from '../lib/dates.js';
+
+const BLOCKING_STATUSES = ['confirmed', 'checked-in', 'pending'];
+
+function findConflict(room, checkinISO, checkoutISO, ignoreId) {
+  if (!checkinISO || !checkoutISO) return null;
+  const others = db.prepare(
+    `SELECT id, guest, checkin, checkout, status FROM bookings WHERE room = ? AND id != ? AND status IN (${BLOCKING_STATUSES.map(() => '?').join(',')})`
+  ).all(room, ignoreId || '', ...BLOCKING_STATUSES);
+  for (const b of others) {
+    if (rangesOverlap(checkinISO, checkoutISO, toISO(b.checkin), toISO(b.checkout))) return b;
+  }
+  return null;
+}
 
 const router = Router();
 
@@ -68,6 +82,15 @@ function syncRoomFromBooking(booking) {
 router.post('/', (req, res, next) => {
   try {
     const body = createSchema.parse(req.body);
+
+    // Reject if the chosen room is already booked overlapping the requested dates.
+    if (BLOCKING_STATUSES.includes(body.status || 'confirmed')) {
+      const conflict = findConflict(body.room, toISO(body.checkin), toISO(body.checkout));
+      if (conflict) {
+        throw new HttpError(409, `Room ${body.room} is already booked ${conflict.checkin} → ${conflict.checkout} (${conflict.guest}, ${conflict.id})`);
+      }
+    }
+
     const lastNumeric = db.prepare(
       `SELECT id FROM bookings WHERE id LIKE 'BK-%' ORDER BY id DESC LIMIT 1`
     ).get();
@@ -103,6 +126,15 @@ router.patch('/:id', (req, res, next) => {
     const existing = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
     if (!existing) throw new HttpError(404, 'Booking not found');
     const merged = { ...existing, ...body };
+
+    // If room or dates changed, check for conflict (skip if booking is already past).
+    const datesOrRoomChanged = ['room', 'checkin', 'checkout'].some(k => body[k] !== undefined && body[k] !== existing[k]);
+    if (datesOrRoomChanged && BLOCKING_STATUSES.includes(merged.status)) {
+      const conflict = findConflict(merged.room, toISO(merged.checkin), toISO(merged.checkout), existing.id);
+      if (conflict) {
+        throw new HttpError(409, `Room ${merged.room} is already booked ${conflict.checkin} → ${conflict.checkout} (${conflict.guest}, ${conflict.id})`);
+      }
+    }
     const tx = db.transaction(() => {
       db.prepare(
         `UPDATE bookings SET guest = ?, phone = ?, email = ?, room = ?, checkin = ?, checkout = ?, nights = ?, amount = ?, status = ?, source = ? WHERE id = ?`

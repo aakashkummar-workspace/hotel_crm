@@ -19,6 +19,8 @@ export default function Bookings({ onToast, prefill, onPrefillConsumed }) {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [selected, setSelected] = useState([]);
+  const [availability, setAvailability] = useState(null);
+  const [availLoading, setAvailLoading] = useState(false);
 
   const refreshAll = async () => {
     const [b, r] = await Promise.all([api.bookings.list(), api.rooms.list()]);
@@ -37,6 +39,21 @@ export default function Bookings({ onToast, prefill, onPrefillConsumed }) {
       onPrefillConsumed?.();
     }
   }, [prefill]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the user picks both dates, query backend for actually-available rooms
+  useEffect(() => {
+    if (!showNew || !form.checkin || !form.checkout || form.checkin >= form.checkout) {
+      setAvailability(null);
+      return;
+    }
+    setAvailLoading(true);
+    let cancelled = false;
+    api.rooms.available(form.checkin, form.checkout)
+      .then(data => { if (!cancelled) setAvailability(data); })
+      .catch(() => { if (!cancelled) setAvailability(null); })
+      .finally(() => { if (!cancelled) setAvailLoading(false); });
+    return () => { cancelled = true; };
+  }, [showNew, form.checkin, form.checkout]);
 
   const sources = ['all', ...new Set(bookings.map(b => b.source))];
   const filtered = bookings
@@ -234,13 +251,31 @@ export default function Bookings({ onToast, prefill, onPrefillConsumed }) {
           </div>
           <div>
             <div className="label" style={{ marginBottom: 6 }}>Room *</div>
-            <select className="input" value={form.room} onChange={e => updateForm('room', e.target.value)}>
-              <option value="">Select a room…</option>
-              {rooms.filter(r => r.status === 'available' || r.num === form.room).map(r => {
-                const t = types.find(x => x.id === r.type_id);
-                return <option key={r.id} value={r.num}>Room {r.num} — {t?.name} · {fmtINR(t?.base_price || 0)}/night</option>;
-              })}
-            </select>
+            {form.checkin && form.checkout ? (
+              <>
+                <select className="input" value={form.room} onChange={e => updateForm('room', e.target.value)}>
+                  <option value="">{availLoading ? 'Checking availability…' : 'Select a room…'}</option>
+                  {(availability?.rooms || rooms).filter(r => r.bookable !== false || r.num === form.room).map(r => {
+                    const t = types.find(x => x.id === r.type_id);
+                    return <option key={r.id} value={r.num}>Room {r.num} — {t?.name} · {fmtINR(t?.base_price || 0)}/night</option>;
+                  })}
+                </select>
+                {availability && (
+                  <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 6 }}>
+                    {availability.rooms.filter(r => r.bookable).length} of {availability.rooms.length} rooms available for {form.checkin} → {form.checkout}
+                    {availability.types.some(t => t.available === 0 && t.count > 0) && (
+                      <span style={{ color: '#db9088', marginLeft: 6 }}>
+                        · sold out: {availability.types.filter(t => t.available === 0 && t.count > 0).map(t => t.name).join(', ')}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <select className="input" value={form.room} onChange={e => updateForm('room', e.target.value)}>
+                <option value="">Pick check-in & check-out first…</option>
+              </select>
+            )}
           </div>
           <div className="row gap-3">
             <div style={{ flex: 1 }}>
