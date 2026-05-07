@@ -471,8 +471,79 @@ def build():
 
     doc.add_page_break()
 
-    # ── 10. Future plans ──────────────────────────────────────────────────
-    add_heading(doc, "10. Things planned for later versions", 1)
+    # ── 10. Hotel policies & guest privileges ─────────────────────────────
+    add_heading(doc, "10. Hotel policies & guest privileges", 1)
+    add_para(doc,
+        "These are the house policies the hotel runs by. The application is designed to "
+        "support each one — staff don't have to remember edge cases by heart, the system "
+        "flags them at the right moment.")
+
+    add_heading(doc, "Live booking status visible to guests", 2)
+    for b in [
+        "Every guest can see the live status of their reservation at any time: Pending, Confirmed, Checked-in or Checked-out",
+        "The status updates automatically as the front desk processes the booking — guests don't need to call to ask",
+        "On the public site, returning guests with a booking reference can pull up their reservation card and see exactly where it stands",
+    ]:
+        add_bullet(doc, b)
+
+    add_heading(doc, "Booking history with filters", 2)
+    for b in [
+        "Returning guests can view their complete history of stays at the hotel",
+        "Filter by date range (last month, last six months, last year, custom)",
+        "Filter by status — upcoming, completed, cancelled",
+        "Filter by room type — Heritage Suite, Courtyard Deluxe, etc.",
+        "Each entry shows the dates, room number, nights, total paid, payment method, and any concierge notes",
+        "Staff see the same history inside the Guests CRM section — useful for personalising returning visits",
+    ]:
+        add_bullet(doc, b)
+
+    add_heading(doc, "Two-hour flexible check-out (free)", 2)
+    for b in [
+        "When a guest's stay ends, the first two hours past the standard check-out time are granted free of charge",
+        "Lets guests breathe — finish breakfast, take a last walk, wait for an evening flight",
+        "After the two-hour grace window the system starts charging — the room rate is pro-rated to the additional hours used",
+        "The dashboard flags late check-outs so the front desk knows to add the late fee at settlement",
+        "The hotel sets the late-check-out rate inside Settings → Billing & tax, so the policy can be tuned for peak vs. off-peak season",
+    ]:
+        add_bullet(doc, b)
+
+    add_heading(doc, "Installment billing for long stays (15 nights or more)", 2)
+    for b in [
+        "Any booking of 15 or more consecutive nights automatically qualifies for split payment",
+        "Half of the total is collected as an advance at the time of booking",
+        "The remaining half is collected at the time of check-out",
+        "The system creates two invoice rows automatically — the first stamped 'Advance', the second stamped 'Balance due'",
+        "When the advance is recorded, the booking moves from Pending to Confirmed",
+        "When the balance is paid at check-out, the second invoice is marked Paid and the booking is closed",
+        "Owners can see at a glance which long stays still owe a balance from the Invoices screen",
+    ]:
+        add_bullet(doc, b)
+
+    add_heading(doc, "Cloud-kitchen add-on (activated when the service starts)", 2)
+    for b in [
+        "The application is ready for an in-house cloud kitchen module",
+        "When the cloud-kitchen business starts operating, a dedicated kitchen account is created with its own login",
+        "Kitchen staff sign in to a focused screen — incoming orders, prep queue, dispatch board",
+        "Orders flow through the same point-of-sale as the café, so payments and tax handling are consistent",
+        "Kitchen inventory, ingredient costs and revenue automatically roll into the existing Expenses and Reports modules",
+        "No retraining for management — the dashboard simply shows another module card alongside Rooms, Coffee Shop and Mini Hall",
+    ]:
+        add_bullet(doc, b)
+
+    add_heading(doc, "Complimentary vehicle for long-stay guests", 2)
+    for b in [
+        "Guests staying 15 nights or more can request a hotel-provided car for short trips, airport transfers, or sightseeing",
+        "The request is captured against the booking and shows up on the front desk's daily checklist",
+        "Driver assignment, departure time, return time and trip purpose are logged under the booking notes",
+        "A fuel and mileage log is kept against each car so the hotel can track running costs from the Expenses screen",
+        "If multiple long-stay guests request the car at overlapping times, the system flags the conflict so staff can coordinate",
+    ]:
+        add_bullet(doc, b)
+
+    doc.add_page_break()
+
+    # ── 11. Future plans ──────────────────────────────────────────────────
+    add_heading(doc, "11. Things planned for later versions", 1)
     for b in [
         "Drag-and-drop bookings on the room calendar to extend or move stays",
         "Real Booking.com / MakeMyTrip channel sync (rates, availability, bookings flow both ways)",
