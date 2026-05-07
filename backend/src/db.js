@@ -49,7 +49,8 @@ export function initSchema() {
       guest TEXT,
       checkin TEXT,
       checkout TEXT,
-      image TEXT
+      image TEXT,
+      price INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS guests (
@@ -141,6 +142,15 @@ export function initSchema() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+}
+
+// Lightweight migrations for columns added after initial release.
+// Idempotent — checks PRAGMA table_info and adds the column only if missing.
+export function runMigrations() {
+  const cols = db.prepare("PRAGMA table_info(rooms)").all().map(c => c.name);
+  if (!cols.includes('price')) {
+    db.exec('ALTER TABLE rooms ADD COLUMN price INTEGER');
+  }
 }
 
 export function logActivity(user_name, action, target) {

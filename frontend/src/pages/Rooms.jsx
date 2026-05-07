@@ -17,6 +17,7 @@ function Stat({ label, value, sub }) {
 }
 
 function RoomCard({ room, type, onClick, onBook }) {
+  const rate = room.effective_price ?? type?.base_price ?? 0;
   return (
     <div className="room-card" onClick={onClick}>
       <div className="room-img">
@@ -35,7 +36,10 @@ function RoomCard({ room, type, onClick, onBook }) {
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
           <div className="display" style={{ fontSize: 17 }}>{type?.name || 'Room'}</div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 15, color: 'var(--gold-2)', fontWeight: 500 }}>{fmtINR(type?.base_price || 0)}</div>
+            <div className="row gap-1" style={{ alignItems: 'baseline', justifyContent: 'flex-end' }}>
+              {room.rate_overridden && <span title="Custom rate" style={{ fontSize: 9, color: 'var(--gold-2)', textTransform: 'uppercase', letterSpacing: '0.1em', background: 'var(--gold-soft)', border: '1px solid var(--gold-line)', padding: '1px 5px', borderRadius: 4 }}>custom</span>}
+              <div style={{ fontSize: 15, color: 'var(--gold-2)', fontWeight: 500 }}>{fmtINR(rate)}</div>
+            </div>
             <div style={{ fontSize: 10, color: 'var(--ink-4)' }}>per night</div>
           </div>
         </div>
@@ -86,7 +90,10 @@ function RoomTable({ rooms, types, onSelect }) {
                 <td>F{r.floor}</td>
                 <td><StatusPill status={r.status} /></td>
                 <td>{r.guest || <span style={{ color: 'var(--ink-4)' }}>—</span>}</td>
-                <td style={{ color: 'var(--gold-2)' }}>{fmtINR(type?.base_price || 0)}</td>
+                <td style={{ color: 'var(--gold-2)' }}>
+                  {fmtINR(r.effective_price ?? type?.base_price ?? 0)}
+                  {r.rate_overridden && <span title="Custom rate" style={{ marginLeft: 6, fontSize: 9, color: 'var(--gold-2)', textTransform: 'uppercase', letterSpacing: '0.1em', background: 'var(--gold-soft)', border: '1px solid var(--gold-line)', padding: '1px 5px', borderRadius: 4 }}>custom</span>}
+                </td>
                 <td><Icon name="chevronRight" size={14} color="var(--ink-4)" /></td>
               </tr>
             );
@@ -191,7 +198,12 @@ function RoomCalendar({ rooms, bookings }) {
   );
 }
 
-function RoomDetail({ room, type, onChangeStatus, busy }) {
+function RoomDetail({ room, type, onChangeStatus, onSavePrice, busy }) {
+  const [editingRate, setEditingRate] = useState(false);
+  const [rateInput, setRateInput] = useState(String(room.effective_price ?? type?.base_price ?? 0));
+  useEffect(() => { setRateInput(String(room.effective_price ?? type?.base_price ?? 0)); setEditingRate(false); }, [room.num]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rate = room.effective_price ?? type?.base_price ?? 0;
+  const typeRate = type?.base_price ?? 0;
   return (
     <div>
       <div style={{ aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', marginBottom: 18, background: 'var(--bg-3)' }}>
@@ -205,7 +217,42 @@ function RoomDetail({ room, type, onChangeStatus, busy }) {
         <StatusPill status={room.status} />
       </div>
       <div className="row gap-4" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
-        <Stat label="Rate" value={fmtINR(type?.base_price || 0)} sub="per night" />
+        <div style={{ flex: 1.4 }}>
+          <div className="label" style={{ marginBottom: 4 }}>
+            Rate {room.rate_overridden && <span style={{ color: 'var(--gold-2)', marginLeft: 4 }}>· custom for this room</span>}
+          </div>
+          {editingRate ? (
+            <div className="row gap-2" style={{ alignItems: 'center' }}>
+              <span style={{ color: 'var(--ink-3)', fontSize: 14 }}>₹</span>
+              <input className="input" type="number" min="0" autoFocus
+                value={rateInput} onChange={e => setRateInput(e.target.value)}
+                style={{ width: 110, padding: '6px 10px', fontSize: 14 }} />
+              <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => onSavePrice(Number(rateInput)).then(() => setEditingRate(false))}>
+                Save
+              </button>
+              <button className="btn btn-sm" disabled={busy} onClick={() => { setEditingRate(false); setRateInput(String(rate)); }}>Cancel</button>
+              {room.rate_overridden && (
+                <button className="btn btn-sm" disabled={busy} title={`Revert to type rate ${fmtINR(typeRate)}`}
+                  onClick={() => onSavePrice(null).then(() => setEditingRate(false))}>
+                  Reset
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="row gap-2" style={{ alignItems: 'baseline' }}>
+              <div className="display" style={{ fontSize: 18, color: 'var(--ink)' }}>{fmtINR(rate)}</div>
+              <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>/ night</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditingRate(true)} style={{ padding: '2px 8px' }}>
+                <Icon name="edit" size={11} />Edit
+              </button>
+            </div>
+          )}
+          {room.rate_overridden && !editingRate && (
+            <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>
+              Type default: {fmtINR(typeRate)}
+            </div>
+          )}
+        </div>
         <Stat label="Beds" value={type?.beds} />
         <Stat label="Size" value={`${type?.sqft || 0} sqft`} />
         <Stat label="Max guests" value={type?.max_guests} />
@@ -284,6 +331,18 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
   });
   const typeFor = (id) => types.find(t => t.id === id);
   const floors = [...new Set(rooms.map(r => r.floor))].sort();
+
+  const savePrice = async (price) => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      const updated = await api.rooms.update(selected.num, { price });
+      setSelected({ ...selected, ...updated, effective_price: updated.price ?? typeFor(updated.type_id)?.base_price ?? 0, rate_overridden: updated.price != null });
+      onToast?.(price == null ? `Room ${selected.num} reset to type rate` : `Room ${selected.num} rate set to ${fmtINR(price)}`);
+      refresh();
+    } catch (e) { onToast?.(e.message || 'Could not save rate'); throw e; }
+    finally { setBusy(false); }
+  };
 
   const changeStatus = async (status) => {
     if (!selected) return;
@@ -455,7 +514,7 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
           </>
         }
       >
-        {selected && <RoomDetail room={selected} type={typeFor(selected.type_id)} onChangeStatus={changeStatus} busy={busy} />}
+        {selected && <RoomDetail room={selected} type={typeFor(selected.type_id)} onChangeStatus={changeStatus} onSavePrice={savePrice} busy={busy} />}
       </Drawer>
 
       <Modal open={!!editingType} onClose={() => setEditingType(null)} title={editingType ? `Edit ${editingType.name}` : ''} width={460}

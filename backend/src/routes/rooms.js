@@ -21,7 +21,13 @@ router.get('/', (_req, res) => {
   const types = db.prepare('SELECT * FROM room_types').all();
   const counts = typeCounts();
   const typesWithCounts = types.map(t => ({ ...t, count: counts[t.id] || 0 }));
-  res.json({ rooms, types: typesWithCounts });
+  const typeMap = Object.fromEntries(types.map(t => [t.id, t]));
+  const roomsWithRate = rooms.map(r => ({
+    ...r,
+    effective_price: r.price ?? typeMap[r.type_id]?.base_price ?? 0,
+    rate_overridden: r.price != null,
+  }));
+  res.json({ rooms: roomsWithRate, types: typesWithCounts });
 });
 
 router.get('/types', (_req, res) => {
@@ -74,8 +80,11 @@ router.get('/available', (req, res, next) => {
       }
     }
 
+    const typeMap = Object.fromEntries(db.prepare('SELECT * FROM room_types').all().map(t => [t.id, t]));
     const result = rooms.map(r => ({
       ...r,
+      effective_price: r.price ?? typeMap[r.type_id]?.base_price ?? 0,
+      rate_overridden: r.price != null,
       bookable: !conflicts[r.num] && r.status !== 'cleaning',
       conflict: conflicts[r.num] || null,
     }));
@@ -107,6 +116,7 @@ const updateSchema = z.object({
   guest: z.string().nullish(),
   checkin: z.string().nullish(),
   checkout: z.string().nullish(),
+  price: z.number().int().nonnegative().nullable().optional(),
 });
 
 const createSchema = z.object({
@@ -143,9 +153,11 @@ router.patch('/:num', (req, res, next) => {
     const body = updateSchema.parse(req.body);
     const existing = db.prepare('SELECT * FROM rooms WHERE num = ?').get(req.params.num);
     if (!existing) throw new HttpError(404, 'Room not found');
+    // For nullable price: only override if key present in body (allow setting to null = revert to type rate)
+    const nextPrice = ('price' in body) ? body.price : existing.price;
     const merged = { ...existing, ...body };
-    db.prepare(`UPDATE rooms SET status = ?, guest = ?, checkin = ?, checkout = ? WHERE num = ?`)
-      .run(merged.status, merged.guest, merged.checkin, merged.checkout, req.params.num);
+    db.prepare(`UPDATE rooms SET status = ?, guest = ?, checkin = ?, checkout = ?, price = ? WHERE num = ?`)
+      .run(merged.status, merged.guest, merged.checkin, merged.checkout, nextPrice, req.params.num);
     res.json(db.prepare('SELECT * FROM rooms WHERE num = ?').get(req.params.num));
   } catch (e) { next(e); }
 });

@@ -8,7 +8,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 
-import { initSchema, db } from './db.js';
+import { initSchema, runMigrations, db } from './db.js';
 import { seed } from './seed.js';
 import { errorHandler, notFound } from './middleware/error.js';
 
@@ -29,6 +29,7 @@ import searchRoutes from './routes/search.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 initSchema();
+runMigrations();
 const rowCount = db.prepare('SELECT COUNT(*) as c FROM rooms').get().c;
 if (rowCount === 0) {
   console.log('Empty database; seeding initial data…');
