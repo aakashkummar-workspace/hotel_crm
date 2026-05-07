@@ -16,7 +16,7 @@ function Stat({ label, value, sub }) {
   );
 }
 
-function RoomCard({ room, type, onClick }) {
+function RoomCard({ room, type, onClick, onBook }) {
   return (
     <div className="room-card" onClick={onClick}>
       <div className="room-img">
@@ -50,10 +50,18 @@ function RoomCard({ room, type, onClick }) {
               {room.checkout ? `out ${room.checkout}` : `in ${room.checkin}`}
             </div>
           </div>
+        ) : room.status === 'available' ? (
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '8px 10px', fontSize: 12 }}
+            onClick={(e) => { e.stopPropagation(); onBook?.(room); }}
+          >
+            <Icon name="plus" size={12} strokeWidth={2.4} />Book this room
+          </button>
         ) : (
           <div className="row gap-2" style={{ padding: '8px 10px', background: 'var(--bg-3)', borderRadius: 8, fontSize: 12, color: 'var(--ink-3)' }}>
-            <Icon name={room.status === 'cleaning' ? 'sparkle' : 'check'} size={14} />
-            {room.status === 'cleaning' ? 'Housekeeping in progress' : 'Ready for next guest'}
+            <Icon name="sparkle" size={14} />
+            Housekeeping in progress
           </div>
         )}
       </div>
@@ -239,7 +247,7 @@ function RoomDetail({ room, type, onChangeStatus, busy }) {
 
 const blankRoom = { num: '', type_id: '', floor: 1, status: 'available', image: '' };
 
-export default function Rooms({ onToast }) {
+export default function Rooms({ onToast, onNavigateWithPrefill }) {
   const [view, setView] = useState('grid');
   const [filter, setFilter] = useState('all');
   const [floorFilter, setFloorFilter] = useState('all');
@@ -352,7 +360,15 @@ export default function Rooms({ onToast }) {
 
       {view === 'grid' && (
         <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-          {filtered.map(r => <RoomCard key={r.id} room={r} type={typeFor(r.type_id)} onClick={() => setSelected(r)} />)}
+          {filtered.map(r => (
+            <RoomCard
+              key={r.id}
+              room={r}
+              type={typeFor(r.type_id)}
+              onClick={() => setSelected(r)}
+              onBook={(room) => onNavigateWithPrefill?.('bookings', { room: room.num })}
+            />
+          ))}
         </div>
       )}
       {view === 'list' && <RoomTable rooms={filtered} types={types} onSelect={setSelected} />}
@@ -366,8 +382,18 @@ export default function Rooms({ onToast }) {
         footer={
           <>
             <button className="btn btn-ghost" onClick={() => setSelected(null)}>Close</button>
-            <button className="btn btn-primary" onClick={() => { shareLink(); setSelected(null); }}>
-              <Icon name="link" size={14} />Copy booking link
+            <button className="btn" onClick={() => { shareLink(); setSelected(null); }}>
+              <Icon name="link" size={14} />Copy link
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={selected?.status !== 'available'}
+              title={selected?.status !== 'available' ? `Room is ${selected?.status}` : ''}
+              onClick={() => {
+                onNavigateWithPrefill?.('bookings', { room: selected.num });
+                setSelected(null);
+              }}>
+              <Icon name="plus" size={14} strokeWidth={2.4} />Book this room
             </button>
           </>
         }
