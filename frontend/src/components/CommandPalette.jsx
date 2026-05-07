@@ -65,7 +65,7 @@ export default function CommandPalette({ open, onClose, onNavigate }) {
 
   if (!open) return null;
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 300, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '14vh' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 300, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '14vh' }}>
       <div onClick={e => e.stopPropagation()} style={{
         background: 'var(--panel)', border: '1px solid var(--gold-line)', borderRadius: 14,
         width: 560, maxWidth: '92vw', maxHeight: '70vh', display: 'flex', flexDirection: 'column',
