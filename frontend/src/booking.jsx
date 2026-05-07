@@ -189,13 +189,22 @@ function App() {
   const [confirmedId, setConfirmedId] = useState(null);
 
   useEffect(() => {
-    api.publicSite.rooms().then(rows => setRooms(rows.map((r, i) => ({
+    const TYPE_DESCS = {
+      'heritage-suite': "A colonial-era room restored with antique teak, Athangudi tiles and a private courtyard reading nook.",
+      'balcony-king': 'Wake to filtered morning light from a wrought-iron balcony with a glimpse of the Bay of Bengal.',
+      'courtyard-deluxe': 'Quiet inward-facing room overlooking the frangipani courtyard. Loved by writers and slow travellers.',
+      'garden-twin': 'Two single beds in a softly-lit room opening onto the herb garden. Ideal for friends travelling together.',
+    };
+    const TYPE_TAGS = {
+      'heritage-suite': 'Most loved',
+      'balcony-king': 'Sea glimpse',
+      'courtyard-deluxe': 'Best value',
+      'garden-twin': 'Twin beds',
+    };
+    api.publicSite.rooms().then(rows => setRooms(rows.map((r) => ({
       ...r,
-      tag: ['Most loved', 'Sea glimpse', 'Best value', 'Twin beds'][i] || 'Featured',
-      desc: r.id === 'heritage-suite' ? "A colonial-era room restored with antique teak, Athangudi tiles and a private courtyard reading nook."
-          : r.id === 'balcony-king' ? 'Wake to filtered morning light from a wrought-iron balcony with a glimpse of the Bay of Bengal.'
-          : r.id === 'courtyard-deluxe' ? 'Quiet inward-facing room overlooking the frangipani courtyard. Loved by writers and slow travellers.'
-          : 'Two single beds in a softly-lit room opening onto the herb garden. Ideal for friends travelling together.',
+      tag: TYPE_TAGS[r.type_id] || 'Featured',
+      desc: TYPE_DESCS[r.type_id] || 'A thoughtfully restored room in the main residence.',
     }))));
     api.publicSite.profile().then(setProfile);
   }, []);
@@ -241,7 +250,10 @@ function App() {
         nights: Math.max(1, nights || 1),
         guests: guestSum,
         rooms: roomsCount,
-        room_type: reserving.id,
+        // The booking backend stores `room` as the actual room number;
+        // for individual-room cards on the public site we send the room num,
+        // and pass the type id along too for clarity in any future logic.
+        room_type: reserving.num || reserving.id,
         amount: reserving.price * Math.max(1, nights || 1),
       });
       setConfirmedId(res.id);
@@ -358,6 +370,9 @@ function App() {
               </div>
               <div className="room-body">
                 <h3 className="room-name">{r.name}</h3>
+                <div style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: -6, marginBottom: 4, fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}>
+                  Room {r.num} · Floor {r.floor}
+                </div>
                 <div className="room-meta">
                   <span>{r.beds} bed</span><span className="dot" />
                   <span>{r.sqft} sq ft</span><span className="dot" />

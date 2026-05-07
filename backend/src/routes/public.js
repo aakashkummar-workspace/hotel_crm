@@ -6,22 +6,26 @@ const router = Router();
 
 router.get('/rooms', (_req, res) => {
   const types = db.prepare('SELECT * FROM room_types').all();
-  const sample = db.prepare('SELECT image, image_focus_x, image_focus_y, type_id FROM rooms WHERE image IS NOT NULL').all();
-  const byType = {};
-  for (const r of sample) {
-    if (!byType[r.type_id]) byType[r.type_id] = r;
-  }
-  const rows = types.map(t => ({
-    id: t.id,
-    name: t.name,
-    price: t.base_price,
-    sqft: t.sqft,
-    beds: t.beds,
-    guests: t.max_guests,
-    image: byType[t.id]?.image || null,
-    image_focus_x: byType[t.id]?.image_focus_x ?? 50,
-    image_focus_y: byType[t.id]?.image_focus_y ?? 50,
-  }));
+  const typeMap = Object.fromEntries(types.map(t => [t.id, t]));
+  const rooms = db.prepare('SELECT * FROM rooms ORDER BY num').all();
+  const rows = rooms.map(r => {
+    const t = typeMap[r.type_id] || {};
+    return {
+      id: r.num,
+      num: r.num,
+      type_id: r.type_id,
+      name: t.name || 'Room',
+      floor: r.floor,
+      price: r.price ?? t.base_price ?? 0,
+      sqft: t.sqft || 0,
+      beds: t.beds || '',
+      guests: r.max_guests ?? t.max_guests ?? 1,
+      image: r.image || null,
+      image_focus_x: r.image_focus_x ?? 50,
+      image_focus_y: r.image_focus_y ?? 50,
+      status: r.status,
+    };
+  });
   res.json(rows);
 });
 
