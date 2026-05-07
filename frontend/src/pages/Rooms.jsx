@@ -48,7 +48,7 @@ function RoomCard({ room, type, onClick, onBook }) {
   return (
     <div className="room-card" onClick={onClick}>
       <div className="room-img">
-        {room.image && <img src={room.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+        {room.image && <img src={room.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${room.image_focus_x ?? 50}% ${room.image_focus_y ?? 50}%` }} />}
         <div style={{ position: 'absolute', top: 12, left: 12 }}>
           <StatusPill status={room.status} />
         </div>
@@ -232,12 +232,39 @@ function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, 
   const [rateInput, setRateInput] = useState(String(room.effective_price ?? type?.base_price ?? 0));
   const [guestsInput, setGuestsInput] = useState(String(room.effective_max_guests ?? type?.max_guests ?? 1));
   const [imageInput, setImageInput] = useState(room.image || '');
+  const [focusX, setFocusX] = useState(room.image_focus_x ?? 50);
+  const [focusY, setFocusY] = useState(room.image_focus_y ?? 50);
   useEffect(() => {
     setRateInput(String(room.effective_price ?? type?.base_price ?? 0));
     setGuestsInput(String(room.effective_max_guests ?? type?.max_guests ?? 1));
     setImageInput(room.image || '');
+    setFocusX(room.image_focus_x ?? 50);
+    setFocusY(room.image_focus_y ?? 50);
     setEditingRate(false); setEditingGuests(false); setEditingImage(false);
   }, [room.num]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setFocusFromEvent = (clientX, clientY, rect) => {
+    const x = Math.max(0, Math.min(100, Math.round((clientX - rect.left) / rect.width * 100)));
+    const y = Math.max(0, Math.min(100, Math.round((clientY - rect.top) / rect.height * 100)));
+    setFocusX(x);
+    setFocusY(y);
+  };
+  const onFocusPointerDown = (e) => {
+    const target = e.currentTarget;
+    target.setPointerCapture?.(e.pointerId);
+    const rect = target.getBoundingClientRect();
+    setFocusFromEvent(e.clientX, e.clientY, rect);
+    const move = (ev) => setFocusFromEvent(ev.clientX, ev.clientY, target.getBoundingClientRect());
+    const up = (ev) => {
+      target.releasePointerCapture?.(ev.pointerId);
+      target.removeEventListener('pointermove', move);
+      target.removeEventListener('pointerup', up);
+      target.removeEventListener('pointercancel', up);
+    };
+    target.addEventListener('pointermove', move);
+    target.addEventListener('pointerup', up);
+    target.addEventListener('pointercancel', up);
+  };
   const rate = room.effective_price ?? type?.base_price ?? 0;
   const typeRate = type?.base_price ?? 0;
   const maxGuests = room.effective_max_guests ?? type?.max_guests ?? 1;
@@ -264,7 +291,12 @@ function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, 
       <div style={{ position: 'relative', marginBottom: 18 }}>
         <div style={{ aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', background: 'var(--bg-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {(editingImage ? imageInput : room.image) ? (
-            <img src={editingImage ? imageInput : room.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <img src={editingImage ? imageInput : room.image} alt=""
+              style={{
+                width: '100%', height: '100%', objectFit: 'cover',
+                objectPosition: editingImage ? `${focusX}% ${focusY}%` : `${room.image_focus_x ?? 50}% ${room.image_focus_y ?? 50}%`,
+              }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           ) : (
             <div style={{ color: 'var(--ink-4)', fontSize: 13, textAlign: 'center' }}>
               <Icon name="sparkle" size={28} />
@@ -291,13 +323,67 @@ function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, 
             </label>
             <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>· any size — auto-resized to fit</span>
           </div>
+
+          {imageInput && (
+            <div style={{ marginTop: 6, marginBottom: 12 }}>
+              <div className="label" style={{ marginBottom: 6 }}>Focal point — click or drag on the photo to choose what stays in view</div>
+              <div
+                onPointerDown={onFocusPointerDown}
+                style={{
+                  position: 'relative',
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  background: 'var(--bg-2)',
+                  border: '1px solid var(--line)',
+                  cursor: 'crosshair',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                }}
+              >
+                <img src={imageInput} alt=""
+                  draggable={false}
+                  style={{ width: '100%', maxHeight: 280, objectFit: 'contain', display: 'block', pointerEvents: 'none' }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                <div style={{
+                  position: 'absolute',
+                  left: `${focusX}%`,
+                  top: `${focusY}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: 22, height: 22, borderRadius: '50%',
+                  background: 'var(--gold)',
+                  border: '3px solid #fff',
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.55)',
+                  pointerEvents: 'none',
+                }} />
+              </div>
+              <div className="row gap-3" style={{ marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ width: 96, aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--line)', background: 'var(--bg-3)' }}>
+                  <img src={imageInput} alt="" draggable={false}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${focusX}% ${focusY}%` }} />
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-3)', flex: 1, minWidth: 160 }}>
+                  Thumbnail preview — this is how the photo will look on the room card.
+                  <div className="mono" style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>focus: {focusX}%, {focusY}%</div>
+                </div>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setFocusX(50); setFocusY(50); }} title="Reset focal point to center">
+                  <Icon name="arrowRight" size={11} strokeWidth={2.2} style={{ transform: 'rotate(45deg)' }} />Center
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="row gap-2">
             <button className="btn btn-sm btn-primary" disabled={busy}
-              onClick={() => onSaveImage(imageInput.trim() || null).then(() => setEditingImage(false))}>
+              onClick={() => onSaveImage(imageInput.trim() || null, { x: focusX, y: focusY }).then(() => setEditingImage(false))}>
               <Icon name="check" size={12} strokeWidth={2.4} />Save photo
             </button>
             <button className="btn btn-sm" disabled={busy}
-              onClick={() => { setEditingImage(false); setImageInput(room.image || ''); }}>
+              onClick={() => {
+                setEditingImage(false);
+                setImageInput(room.image || '');
+                setFocusX(room.image_focus_x ?? 50);
+                setFocusY(room.image_focus_y ?? 50);
+              }}>
               Cancel
             </button>
             {room.image && (
@@ -501,11 +587,16 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
     finally { setBusy(false); }
   };
 
-  const saveImage = async (image) => {
+  const saveImage = async (image, focus) => {
     if (!selected) return;
     setBusy(true);
     try {
-      const updated = await api.rooms.update(selected.num, { image: image ?? '' });
+      const body = { image: image ?? '' };
+      if (image && focus) {
+        body.image_focus_x = focus.x;
+        body.image_focus_y = focus.y;
+      }
+      const updated = await api.rooms.update(selected.num, body);
       const t = typeFor(updated.type_id);
       setSelected({
         ...selected, ...updated,

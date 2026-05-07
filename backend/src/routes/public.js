@@ -6,9 +6,11 @@ const router = Router();
 
 router.get('/rooms', (_req, res) => {
   const types = db.prepare('SELECT * FROM room_types').all();
-  const sample = db.prepare('SELECT image, type_id FROM rooms WHERE image IS NOT NULL').all();
+  const sample = db.prepare('SELECT image, image_focus_x, image_focus_y, type_id FROM rooms WHERE image IS NOT NULL').all();
   const byType = {};
-  for (const r of sample) byType[r.type_id] = byType[r.type_id] || r.image;
+  for (const r of sample) {
+    if (!byType[r.type_id]) byType[r.type_id] = r;
+  }
   const rows = types.map(t => ({
     id: t.id,
     name: t.name,
@@ -16,7 +18,9 @@ router.get('/rooms', (_req, res) => {
     sqft: t.sqft,
     beds: t.beds,
     guests: t.max_guests,
-    image: byType[t.id] || null,
+    image: byType[t.id]?.image || null,
+    image_focus_x: byType[t.id]?.image_focus_x ?? 50,
+    image_focus_y: byType[t.id]?.image_focus_y ?? 50,
   }));
   res.json(rows);
 });

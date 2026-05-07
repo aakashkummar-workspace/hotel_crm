@@ -123,6 +123,8 @@ const updateSchema = z.object({
   price: z.number().int().nonnegative().nullable().optional(),
   max_guests: z.number().int().positive().nullable().optional(),
   image: z.string().refine(s => s === '' || /^(https?:\/\/|data:image\/)/i.test(s), { message: 'image must be an http(s) URL or data:image/... URL' }).nullable().optional(),
+  image_focus_x: z.number().int().min(0).max(100).optional(),
+  image_focus_y: z.number().int().min(0).max(100).optional(),
 });
 
 const createSchema = z.object({
@@ -163,9 +165,13 @@ router.patch('/:num', (req, res, next) => {
     const nextPrice = ('price' in body) ? body.price : existing.price;
     const nextMaxGuests = ('max_guests' in body) ? body.max_guests : existing.max_guests;
     const nextImage = ('image' in body) ? (body.image || null) : existing.image;
+    // When the image is cleared, reset the focal point so the next photo starts centered.
+    const clearingImage = ('image' in body) && !body.image;
+    const nextFocusX = clearingImage ? 50 : ('image_focus_x' in body ? body.image_focus_x : (existing.image_focus_x ?? 50));
+    const nextFocusY = clearingImage ? 50 : ('image_focus_y' in body ? body.image_focus_y : (existing.image_focus_y ?? 50));
     const merged = { ...existing, ...body };
-    db.prepare(`UPDATE rooms SET status = ?, guest = ?, checkin = ?, checkout = ?, price = ?, max_guests = ?, image = ? WHERE num = ?`)
-      .run(merged.status, merged.guest, merged.checkin, merged.checkout, nextPrice, nextMaxGuests, nextImage, req.params.num);
+    db.prepare(`UPDATE rooms SET status = ?, guest = ?, checkin = ?, checkout = ?, price = ?, max_guests = ?, image = ?, image_focus_x = ?, image_focus_y = ? WHERE num = ?`)
+      .run(merged.status, merged.guest, merged.checkin, merged.checkout, nextPrice, nextMaxGuests, nextImage, nextFocusX, nextFocusY, req.params.num);
     res.json(db.prepare('SELECT * FROM rooms WHERE num = ?').get(req.params.num));
   } catch (e) { next(e); }
 });

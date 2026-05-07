@@ -51,7 +51,9 @@ export function initSchema() {
       checkout TEXT,
       image TEXT,
       price INTEGER,
-      max_guests INTEGER
+      max_guests INTEGER,
+      image_focus_x INTEGER NOT NULL DEFAULT 50,
+      image_focus_y INTEGER NOT NULL DEFAULT 50
     );
 
     CREATE TABLE IF NOT EXISTS guests (
@@ -154,6 +156,12 @@ export function runMigrations() {
   }
   if (!cols.includes('max_guests')) {
     db.exec('ALTER TABLE rooms ADD COLUMN max_guests INTEGER');
+  }
+  if (!cols.includes('image_focus_x')) {
+    db.exec('ALTER TABLE rooms ADD COLUMN image_focus_x INTEGER NOT NULL DEFAULT 50');
+  }
+  if (!cols.includes('image_focus_y')) {
+    db.exec('ALTER TABLE rooms ADD COLUMN image_focus_y INTEGER NOT NULL DEFAULT 50');
   }
 }
 
