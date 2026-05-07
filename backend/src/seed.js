@@ -37,18 +37,7 @@ const ROOMS = [
   { num: '303', type_id: 'garden-twin', floor: 3, status: 'available' },
 ];
 
-const BOOKINGS = [
-  { id: 'BK-2841', guest: 'Aanya Krishnamurthy', room: '101', checkin: 'May 03', checkout: 'May 09', nights: 6, amount: 50400, status: 'checked-in', source: 'Direct', phone: '+91 98765 43210' },
-  { id: 'BK-2842', guest: 'Marcus Bell', room: '104', checkin: 'May 07', checkout: 'May 10', nights: 3, amount: 15600, status: 'confirmed', source: 'Booking.com', phone: '+1 415 555 0142' },
-  { id: 'BK-2843', guest: 'The Choudhury Family', room: '201', checkin: 'May 05', checkout: 'May 11', nights: 6, amount: 50400, status: 'checked-in', source: 'Direct', phone: '+91 98220 11122' },
-  { id: 'BK-2844', guest: 'Sarah & David Lin', room: '203', checkin: 'May 04', checkout: 'May 08', nights: 4, amount: 24800, status: 'checked-in', source: 'Direct', phone: '+65 9123 4567' },
-  { id: 'BK-2845', guest: 'Imran Shaikh', room: '204', checkin: 'May 06', checkout: 'May 09', nights: 3, amount: 15600, status: 'confirmed', source: 'WhatsApp', phone: '+91 99877 65432' },
-  { id: 'BK-2846', guest: 'Léa Martin', room: '302', checkin: 'May 02', checkout: 'May 10', nights: 8, amount: 49600, status: 'checked-in', source: 'MakeMyTrip', phone: '+33 6 12 34 56 78' },
-  { id: 'BK-2847', guest: 'Rohan Mehta', room: '301', checkin: 'May 12', checkout: 'May 14', nights: 2, amount: 16800, status: 'confirmed', source: 'Direct', phone: '+91 90909 12121' },
-  { id: 'BK-2848', guest: 'Priya Iyer', room: '102', checkin: 'May 09', checkout: 'May 11', nights: 2, amount: 10400, status: 'pending', source: 'WhatsApp', phone: '+91 98888 12345' },
-  { id: 'BK-2849', guest: 'Tom Whitfield', room: '203', checkin: 'May 14', checkout: 'May 17', nights: 3, amount: 18600, status: 'confirmed', source: 'Booking.com', phone: '+44 7700 900123' },
-  { id: 'BK-2850', guest: 'Kavya Reddy', room: '303', checkin: 'May 18', checkout: 'May 20', nights: 2, amount: 8800, status: 'confirmed', source: 'Direct', phone: '+91 88200 33445' },
-];
+const BOOKINGS = [];
 
 const COFFEE_MENU = [
   { id: 'esp-1', name: 'Aurelia Espresso', category: 'Espresso', price: 180, description: 'House blend, double shot', emoji: '☕' },
