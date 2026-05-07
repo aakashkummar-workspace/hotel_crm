@@ -50,7 +50,8 @@ export function initSchema() {
       checkin TEXT,
       checkout TEXT,
       image TEXT,
-      price INTEGER
+      price INTEGER,
+      max_guests INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS guests (
@@ -150,6 +151,9 @@ export function runMigrations() {
   const cols = db.prepare("PRAGMA table_info(rooms)").all().map(c => c.name);
   if (!cols.includes('price')) {
     db.exec('ALTER TABLE rooms ADD COLUMN price INTEGER');
+  }
+  if (!cols.includes('max_guests')) {
+    db.exec('ALTER TABLE rooms ADD COLUMN max_guests INTEGER');
   }
 }
 

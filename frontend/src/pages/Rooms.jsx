@@ -198,12 +198,20 @@ function RoomCalendar({ rooms, bookings }) {
   );
 }
 
-function RoomDetail({ room, type, onChangeStatus, onSavePrice, busy }) {
+function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, busy }) {
   const [editingRate, setEditingRate] = useState(false);
+  const [editingGuests, setEditingGuests] = useState(false);
   const [rateInput, setRateInput] = useState(String(room.effective_price ?? type?.base_price ?? 0));
-  useEffect(() => { setRateInput(String(room.effective_price ?? type?.base_price ?? 0)); setEditingRate(false); }, [room.num]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [guestsInput, setGuestsInput] = useState(String(room.effective_max_guests ?? type?.max_guests ?? 1));
+  useEffect(() => {
+    setRateInput(String(room.effective_price ?? type?.base_price ?? 0));
+    setGuestsInput(String(room.effective_max_guests ?? type?.max_guests ?? 1));
+    setEditingRate(false); setEditingGuests(false);
+  }, [room.num]); // eslint-disable-line react-hooks/exhaustive-deps
   const rate = room.effective_price ?? type?.base_price ?? 0;
   const typeRate = type?.base_price ?? 0;
+  const maxGuests = room.effective_max_guests ?? type?.max_guests ?? 1;
+  const typeMaxGuests = type?.max_guests ?? 1;
   return (
     <div>
       <div style={{ aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', marginBottom: 18, background: 'var(--bg-3)' }}>
@@ -255,7 +263,38 @@ function RoomDetail({ room, type, onChangeStatus, onSavePrice, busy }) {
         </div>
         <Stat label="Beds" value={type?.beds} />
         <Stat label="Size" value={`${type?.sqft || 0} sqft`} />
-        <Stat label="Max guests" value={type?.max_guests} />
+        <div style={{ flex: 1 }}>
+          <div className="label" style={{ marginBottom: 4 }}>
+            Max guests {room.max_guests_overridden && <span style={{ color: 'var(--gold-2)', marginLeft: 4 }}>· custom</span>}
+          </div>
+          {editingGuests ? (
+            <div className="row gap-2" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              <input className="input" type="number" min="1" max="20" autoFocus
+                value={guestsInput} onChange={e => setGuestsInput(e.target.value)}
+                style={{ width: 70, padding: '6px 10px', fontSize: 14 }} />
+              <button className="btn btn-sm btn-primary" disabled={busy}
+                onClick={() => onSaveMaxGuests(Number(guestsInput)).then(() => setEditingGuests(false))}>Save</button>
+              <button className="btn btn-sm" disabled={busy}
+                onClick={() => { setEditingGuests(false); setGuestsInput(String(maxGuests)); }}>Cancel</button>
+              {room.max_guests_overridden && (
+                <button className="btn btn-sm" disabled={busy} title={`Revert to type default (${typeMaxGuests})`}
+                  onClick={() => onSaveMaxGuests(null).then(() => setEditingGuests(false))}>Reset</button>
+              )}
+            </div>
+          ) : (
+            <div className="row gap-2" style={{ alignItems: 'baseline' }}>
+              <div className="display" style={{ fontSize: 18, color: 'var(--ink)' }}>{maxGuests}</div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditingGuests(true)} style={{ padding: '2px 8px' }}>
+                <Icon name="edit" size={11} />Edit
+              </button>
+            </div>
+          )}
+          {room.max_guests_overridden && !editingGuests && (
+            <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>
+              Type default: {typeMaxGuests}
+            </div>
+          )}
+        </div>
       </div>
       <div style={{ marginTop: 22 }}>
         <div className="label" style={{ marginBottom: 10 }}>Update status</div>
@@ -337,10 +376,36 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
     setBusy(true);
     try {
       const updated = await api.rooms.update(selected.num, { price });
-      setSelected({ ...selected, ...updated, effective_price: updated.price ?? typeFor(updated.type_id)?.base_price ?? 0, rate_overridden: updated.price != null });
+      const t = typeFor(updated.type_id);
+      setSelected({
+        ...selected, ...updated,
+        effective_price: updated.price ?? t?.base_price ?? 0,
+        rate_overridden: updated.price != null,
+        effective_max_guests: updated.max_guests ?? t?.max_guests ?? 1,
+        max_guests_overridden: updated.max_guests != null,
+      });
       onToast?.(price == null ? `Room ${selected.num} reset to type rate` : `Room ${selected.num} rate set to ${fmtINR(price)}`);
       refresh();
     } catch (e) { onToast?.(e.message || 'Could not save rate'); throw e; }
+    finally { setBusy(false); }
+  };
+
+  const saveMaxGuests = async (max_guests) => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      const updated = await api.rooms.update(selected.num, { max_guests });
+      const t = typeFor(updated.type_id);
+      setSelected({
+        ...selected, ...updated,
+        effective_price: updated.price ?? t?.base_price ?? 0,
+        rate_overridden: updated.price != null,
+        effective_max_guests: updated.max_guests ?? t?.max_guests ?? 1,
+        max_guests_overridden: updated.max_guests != null,
+      });
+      onToast?.(max_guests == null ? `Room ${selected.num} max guests reset to type default` : `Room ${selected.num} max guests set to ${max_guests}`);
+      refresh();
+    } catch (e) { onToast?.(e.message || 'Could not save'); throw e; }
     finally { setBusy(false); }
   };
 
@@ -514,7 +579,7 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
           </>
         }
       >
-        {selected && <RoomDetail room={selected} type={typeFor(selected.type_id)} onChangeStatus={changeStatus} onSavePrice={savePrice} busy={busy} />}
+        {selected && <RoomDetail room={selected} type={typeFor(selected.type_id)} onChangeStatus={changeStatus} onSavePrice={savePrice} onSaveMaxGuests={saveMaxGuests} busy={busy} />}
       </Drawer>
 
       <Modal open={!!editingType} onClose={() => setEditingType(null)} title={editingType ? `Edit ${editingType.name}` : ''} width={460}
