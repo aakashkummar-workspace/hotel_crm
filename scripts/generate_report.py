@@ -570,10 +570,17 @@ def build():
         "follows the same pattern as everything that's already there.",
         italic=True, color=INK_LIGHT)
 
-    out_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "Hotel-CRM-Report.docx"))
-    doc.save(out_path)
-    print(f"OK: {out_path}")
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    out_path = os.path.join(base_dir, "Hotel-CRM-Report.docx")
+    try:
+        doc.save(out_path)
+        print(f"OK: {out_path}")
+    except PermissionError:
+        # File is open in Word — save next to it under a different name so the user
+        # still gets the new version without having to close Word first.
+        fallback = os.path.join(base_dir, "Hotel-CRM-Report-new.docx")
+        doc.save(fallback)
+        print(f"OK (original locked, wrote alternate): {fallback}")
 
 
 if __name__ == "__main__":
