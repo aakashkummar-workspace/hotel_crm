@@ -30,6 +30,26 @@ router.get('/types', (_req, res) => {
   res.json(types.map(t => ({ ...t, count: counts[t.id] || 0 })));
 });
 
+const typeUpdateSchema = z.object({
+  name: z.string().min(1).optional(),
+  base_price: z.number().int().nonnegative().optional(),
+  sqft: z.number().int().positive().optional(),
+  beds: z.string().min(1).optional(),
+  max_guests: z.number().int().positive().optional(),
+});
+
+router.patch('/types/:id', (req, res, next) => {
+  try {
+    const body = typeUpdateSchema.parse(req.body);
+    const existing = db.prepare('SELECT * FROM room_types WHERE id = ?').get(req.params.id);
+    if (!existing) throw new HttpError(404, 'Room type not found');
+    const merged = { ...existing, ...body };
+    db.prepare('UPDATE room_types SET name = ?, base_price = ?, sqft = ?, beds = ?, max_guests = ? WHERE id = ?')
+      .run(merged.name, merged.base_price, merged.sqft, merged.beds, merged.max_guests, req.params.id);
+    res.json(db.prepare('SELECT * FROM room_types WHERE id = ?').get(req.params.id));
+  } catch (e) { next(e); }
+});
+
 // Returns rooms that are bookable for the given date range.
 // A room is bookable iff it has no booking with a blocking status whose
 // [checkin, checkout) overlaps the requested [checkin, checkout).

@@ -42,6 +42,7 @@ export const api = {
     create: (body) => request('/rooms', { method: 'POST', body }),
     update: (num, body) => request(`/rooms/${num}`, { method: 'PATCH', body }),
     remove: (num) => request(`/rooms/${num}`, { method: 'DELETE' }),
+    updateType: (id, body) => request(`/rooms/types/${id}`, { method: 'PATCH', body }),
   },
   bookings: {
     list: (status) => request(`/bookings${status ? `?status=${encodeURIComponent(status)}` : ''}`),

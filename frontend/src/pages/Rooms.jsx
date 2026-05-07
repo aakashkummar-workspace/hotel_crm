@@ -258,6 +258,8 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
   const [showNew, setShowNew] = useState(false);
   const [newRoom, setNewRoom] = useState(blankRoom);
   const [busy, setBusy] = useState(false);
+  const [editingType, setEditingType] = useState(null);
+  const [typeForm, setTypeForm] = useState({ name: '', base_price: 0, sqft: 0, beds: '', max_guests: 1 });
 
   const refresh = async () => {
     const { rooms, types } = await api.rooms.list();
@@ -300,6 +302,29 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
     finally { setBusy(false); }
   };
 
+  const openEditType = (t) => {
+    setEditingType(t);
+    setTypeForm({ name: t.name, base_price: t.base_price, sqft: t.sqft, beds: t.beds, max_guests: t.max_guests });
+  };
+
+  const saveType = async () => {
+    if (!editingType) return;
+    setBusy(true);
+    try {
+      await api.rooms.updateType(editingType.id, {
+        name: typeForm.name,
+        base_price: Number(typeForm.base_price),
+        sqft: Number(typeForm.sqft),
+        beds: typeForm.beds,
+        max_guests: Number(typeForm.max_guests),
+      });
+      onToast?.(`${typeForm.name} rate updated to ${fmtINR(Number(typeForm.base_price))}/night`);
+      setEditingType(null);
+      refresh();
+    } catch (e) { onToast?.(e.message || 'Could not save'); }
+    finally { setBusy(false); }
+  };
+
   const submitNewRoom = async () => {
     if (!newRoom.num || !newRoom.type_id) { onToast?.('Room number and type are required'); return; }
     setBusy(true);
@@ -334,18 +359,25 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
         }
       />
 
-      {/* Per-type inventory */}
+      {/* Per-type inventory — click to edit rate */}
       <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
         {types.map(t => {
           const total = t.count || rooms.filter(r => r.type_id === t.id).length;
           const occupied = rooms.filter(r => r.type_id === t.id && (r.status === 'occupied' || r.status === 'reserved')).length;
           const free = total - occupied;
           return (
-            <div key={t.id} className="card" style={{ padding: '10px 14px', minWidth: 180 }}>
+            <div key={t.id} className="card" style={{ padding: '10px 14px', minWidth: 200, cursor: 'pointer', transition: 'border-color .15s, transform .15s' }}
+              onClick={() => openEditType(t)}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--gold-line)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              title="Click to edit rate">
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>{fmtINR(t.base_price)}/night</div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="row gap-2" style={{ alignItems: 'center' }}>
+                    <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                    <Icon name="edit" size={11} color="var(--ink-4)" />
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--gold-2)', marginTop: 2, fontWeight: 500 }}>{fmtINR(t.base_price)}<span style={{ color: 'var(--ink-4)', fontWeight: 400 }}> / night</span></div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className="display" style={{ fontSize: 18, color: free > 0 ? 'var(--gold-2)' : 'var(--ink-4)', lineHeight: 1 }}>
@@ -425,6 +457,46 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
       >
         {selected && <RoomDetail room={selected} type={typeFor(selected.type_id)} onChangeStatus={changeStatus} busy={busy} />}
       </Drawer>
+
+      <Modal open={!!editingType} onClose={() => setEditingType(null)} title={editingType ? `Edit ${editingType.name}` : ''} width={460}
+        footer={<>
+          <button className="btn btn-ghost" onClick={() => setEditingType(null)} disabled={busy}>Cancel</button>
+          <button className="btn btn-primary" onClick={saveType} disabled={busy}>
+            <Icon name="check" size={14} strokeWidth={2.4} />{busy ? 'Saving…' : 'Save changes'}
+          </button>
+        </>}>
+        {editingType && (
+          <div className="col gap-4">
+            <div>
+              <div className="label" style={{ marginBottom: 6 }}>Type name</div>
+              <input className="input" value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <div className="label" style={{ marginBottom: 6 }}>Rate per night (₹) *</div>
+              <input className="input" type="number" min="0" value={typeForm.base_price} onChange={e => setTypeForm(f => ({ ...f, base_price: e.target.value }))} />
+              <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 6 }}>
+                Applies to all {rooms.filter(r => r.type_id === editingType.id).length} {editingType.name} room(s). Future bookings will use this rate; existing bookings keep their stored amount.
+              </div>
+            </div>
+            <div className="row gap-3">
+              <div style={{ flex: 1 }}>
+                <div className="label" style={{ marginBottom: 6 }}>Bed type</div>
+                <select className="input" value={typeForm.beds} onChange={e => setTypeForm(f => ({ ...f, beds: e.target.value }))}>
+                  <option>King</option><option>Queen</option><option>Twin</option><option>Double</option><option>Single</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="label" style={{ marginBottom: 6 }}>Size (sqft)</div>
+                <input className="input" type="number" min="0" value={typeForm.sqft} onChange={e => setTypeForm(f => ({ ...f, sqft: e.target.value }))} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="label" style={{ marginBottom: 6 }}>Max guests</div>
+                <input className="input" type="number" min="1" value={typeForm.max_guests} onChange={e => setTypeForm(f => ({ ...f, max_guests: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={showNew} onClose={() => setShowNew(false)} title="Add room" width={460}
         footer={<>
