@@ -6,6 +6,33 @@ import { api, fmtINR } from '../api.js';
 const AMENITIES = ['King Bed', 'Air Conditioning', 'Rain Shower', 'Coffee Press', 'Smart TV', 'Mini Bar', 'Workspace', 'Balcony', 'Garden View', 'Sea Glimpse', 'Heritage Furniture', 'Daily Housekeeping'];
 const STATUSES = ['available', 'occupied', 'reserved', 'cleaning'];
 
+// Loads any size image, downscales it so the longest side is `maxDim`,
+// and returns a JPEG data URL. Keeps payloads small no matter the source.
+function compressImageFile(file, { maxDim = 1800, quality = 0.85 } = {}) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        // PNGs with alpha channel get re-encoded as JPEG (no transparency, but tiny).
+        try { resolve(canvas.toDataURL('image/jpeg', quality)); }
+        catch (e) { reject(e); }
+      };
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function Stat({ label, value, sub }) {
   return (
     <div style={{ flex: 1 }}>
@@ -216,13 +243,20 @@ function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, 
   const maxGuests = room.effective_max_guests ?? type?.max_guests ?? 1;
   const typeMaxGuests = type?.max_guests ?? 1;
 
-  const onPickFile = (e) => {
+  const onPickFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert('Please pick an image under 2 MB'); return; }
-    const reader = new FileReader();
-    reader.onload = () => setImageInput(String(reader.result || ''));
-    reader.readAsDataURL(file);
+    try {
+      const dataUrl = await compressImageFile(file, { maxDim: 1800, quality: 0.85 });
+      setImageInput(dataUrl);
+    } catch (err) {
+      // Fallback: load as-is if browser can't decode it (e.g. exotic format)
+      const reader = new FileReader();
+      reader.onload = () => setImageInput(String(reader.result || ''));
+      reader.readAsDataURL(file);
+    }
+    // reset the input so picking the same file twice still triggers onChange
+    e.target.value = '';
   };
 
   return (
@@ -255,7 +289,7 @@ function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, 
               <Icon name="download" size={12} strokeWidth={2.2} />Upload from device
               <input type="file" accept="image/*" onChange={onPickFile} style={{ display: 'none' }} />
             </label>
-            <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>· max 2 MB · stored as data URL</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>· any size — auto-resized to fit</span>
           </div>
           <div className="row gap-2">
             <button className="btn btn-sm btn-primary" disabled={busy}
