@@ -65,13 +65,13 @@ export function Avatar({ name, size = 32, tone = 'gold' }) {
 
 export function SectionHeader({ eyebrow, title, sub, right }) {
   return (
-    <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
-      <div>
+    <div className="section-header">
+      <div className="section-header-text">
         {eyebrow && <div className="label" style={{ marginBottom: 8 }}>{eyebrow}</div>}
-        <div className="display" style={{ fontSize: 32, lineHeight: 1.1, color: 'var(--ink)' }}>{title}</div>
-        {sub && <div style={{ color: 'var(--ink-3)', marginTop: 6, fontSize: 14 }}>{sub}</div>}
+        <div className="display section-header-title">{title}</div>
+        {sub && <div className="section-header-sub">{sub}</div>}
       </div>
-      {right}
+      {right && <div className="section-header-right">{right}</div>}
     </div>
   );
 }

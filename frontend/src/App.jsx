@@ -56,6 +56,7 @@ export default function App() {
   const [tweaks, setTweaks] = useState(loadTweaks);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [bookingPrefill, setBookingPrefill] = useState(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -86,8 +87,16 @@ export default function App() {
 
   const setTweak = (key, value) => setTweaks(t => ({ ...t, [key]: value }));
   const cycleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 900) {
+      setMobileNavOpen(v => !v);
+      return;
+    }
     const cycle = { expanded: 'collapsed', collapsed: 'floating', floating: 'expanded' };
     setTweak('sidebarStyle', cycle[tweaks.sidebarStyle] || 'expanded');
+  };
+  const navigate = (target) => {
+    setMobileNavOpen(false);
+    setPage(target);
   };
 
   const handleLogout = () => {
@@ -105,9 +114,9 @@ export default function App() {
 
   const navigateWithPrefill = (target, prefill) => {
     setBookingPrefill(prefill || null);
-    setPage(target);
+    navigate(target);
   };
-  const props = { onNavigate: setPage, onToast: setToast, onNavigateWithPrefill: navigateWithPrefill };
+  const props = { onNavigate: navigate, onToast: setToast, onNavigateWithPrefill: navigateWithPrefill };
   const pageEl = {
     dashboard: <Dashboard {...props} />,
     rooms: <Rooms {...props} />,
@@ -122,12 +131,13 @@ export default function App() {
   }[page] || <Dashboard {...props} />;
 
   return (
-    <div className="app" data-sidebar={tweaks.sidebarStyle}>
+    <div className="app" data-sidebar={tweaks.sidebarStyle} data-mobile-nav={mobileNavOpen ? 'open' : 'closed'}>
+      {mobileNavOpen && <div className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} />}
       <Sidebar
         active={page}
-        onNavigate={setPage}
-        onOpenBookingPage={() => window.open('/booking.html', '_blank')}
-        onOpenSearch={() => setPaletteOpen(true)}
+        onNavigate={navigate}
+        onOpenBookingPage={() => { setMobileNavOpen(false); window.open('/booking.html', '_blank'); }}
+        onOpenSearch={() => { setMobileNavOpen(false); setPaletteOpen(true); }}
         user={user}
       />
       <div className="main-area">
@@ -147,7 +157,7 @@ export default function App() {
       </div>
 
       <Toast message={toast} onDismiss={() => setToast('')} />
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={setPage} />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={navigate} />
 
       <TweaksPanel title="Tweaks">
         <TweakSection label="Sidebar style" />

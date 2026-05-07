@@ -198,25 +198,83 @@ function RoomCalendar({ rooms, bookings }) {
   );
 }
 
-function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, busy }) {
+function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, onSaveImage, busy }) {
   const [editingRate, setEditingRate] = useState(false);
   const [editingGuests, setEditingGuests] = useState(false);
+  const [editingImage, setEditingImage] = useState(false);
   const [rateInput, setRateInput] = useState(String(room.effective_price ?? type?.base_price ?? 0));
   const [guestsInput, setGuestsInput] = useState(String(room.effective_max_guests ?? type?.max_guests ?? 1));
+  const [imageInput, setImageInput] = useState(room.image || '');
   useEffect(() => {
     setRateInput(String(room.effective_price ?? type?.base_price ?? 0));
     setGuestsInput(String(room.effective_max_guests ?? type?.max_guests ?? 1));
-    setEditingRate(false); setEditingGuests(false);
+    setImageInput(room.image || '');
+    setEditingRate(false); setEditingGuests(false); setEditingImage(false);
   }, [room.num]); // eslint-disable-line react-hooks/exhaustive-deps
   const rate = room.effective_price ?? type?.base_price ?? 0;
   const typeRate = type?.base_price ?? 0;
   const maxGuests = room.effective_max_guests ?? type?.max_guests ?? 1;
   const typeMaxGuests = type?.max_guests ?? 1;
+
+  const onPickFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { alert('Please pick an image under 2 MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setImageInput(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div>
-      <div style={{ aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', marginBottom: 18, background: 'var(--bg-3)' }}>
-        {room.image && <img src={room.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+      <div style={{ position: 'relative', marginBottom: 18 }}>
+        <div style={{ aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', background: 'var(--bg-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {(editingImage ? imageInput : room.image) ? (
+            <img src={editingImage ? imageInput : room.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          ) : (
+            <div style={{ color: 'var(--ink-4)', fontSize: 13, textAlign: 'center' }}>
+              <Icon name="sparkle" size={28} />
+              <div style={{ marginTop: 8 }}>No photo yet</div>
+            </div>
+          )}
+        </div>
+        {!editingImage && (
+          <button className="btn btn-sm" onClick={() => setEditingImage(true)}
+            style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(21,17,12,0.78)', color: '#f4ede0', borderColor: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}>
+            <Icon name="edit" size={12} strokeWidth={2.2} />Change photo
+          </button>
+        )}
       </div>
+      {editingImage && (
+        <div className="card" style={{ padding: 14, marginBottom: 18, background: 'var(--bg-3)' }}>
+          <div className="label" style={{ marginBottom: 6 }}>Image URL</div>
+          <input className="input" placeholder="https://…  (paste from Unsplash, Cloudinary, etc.)"
+            value={imageInput} onChange={e => setImageInput(e.target.value)} style={{ marginBottom: 10 }} />
+          <div className="row gap-2" style={{ marginBottom: 10, flexWrap: 'wrap' }}>
+            <label className="btn btn-sm" style={{ cursor: 'pointer' }}>
+              <Icon name="download" size={12} strokeWidth={2.2} />Upload from device
+              <input type="file" accept="image/*" onChange={onPickFile} style={{ display: 'none' }} />
+            </label>
+            <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>· max 2 MB · stored as data URL</span>
+          </div>
+          <div className="row gap-2">
+            <button className="btn btn-sm btn-primary" disabled={busy}
+              onClick={() => onSaveImage(imageInput.trim() || null).then(() => setEditingImage(false))}>
+              <Icon name="check" size={12} strokeWidth={2.4} />Save photo
+            </button>
+            <button className="btn btn-sm" disabled={busy}
+              onClick={() => { setEditingImage(false); setImageInput(room.image || ''); }}>
+              Cancel
+            </button>
+            {room.image && (
+              <button className="btn btn-sm" disabled={busy} title="Remove the image"
+                onClick={() => onSaveImage(null).then(() => setEditingImage(false))}>
+                <Icon name="trash" size={12} />Remove
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
         <div>
           <div className="display" style={{ fontSize: 26 }}>{type?.name || 'Room'}</div>
@@ -224,13 +282,13 @@ function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, 
         </div>
         <StatusPill status={room.status} />
       </div>
-      <div className="row gap-4" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
-        <div style={{ flex: 1.4 }}>
+      <div className="room-detail-stats">
+        <div className="room-detail-stat-rate" style={{ flex: 1.4 }}>
           <div className="label" style={{ marginBottom: 4 }}>
             Rate {room.rate_overridden && <span style={{ color: 'var(--gold-2)', marginLeft: 4 }}>· custom for this room</span>}
           </div>
           {editingRate ? (
-            <div className="row gap-2" style={{ alignItems: 'center' }}>
+            <div className="row gap-2" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--ink-3)', fontSize: 14 }}>₹</span>
               <input className="input" type="number" min="0" autoFocus
                 value={rateInput} onChange={e => setRateInput(e.target.value)}
@@ -263,7 +321,7 @@ function RoomDetail({ room, type, onChangeStatus, onSavePrice, onSaveMaxGuests, 
         </div>
         <Stat label="Beds" value={type?.beds} />
         <Stat label="Size" value={`${type?.sqft || 0} sqft`} />
-        <div style={{ flex: 1 }}>
+        <div className="room-detail-stat-guests" style={{ flex: 1 }}>
           <div className="label" style={{ marginBottom: 4 }}>
             Max guests {room.max_guests_overridden && <span style={{ color: 'var(--gold-2)', marginLeft: 4 }}>· custom</span>}
           </div>
@@ -409,6 +467,25 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
     finally { setBusy(false); }
   };
 
+  const saveImage = async (image) => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      const updated = await api.rooms.update(selected.num, { image: image ?? '' });
+      const t = typeFor(updated.type_id);
+      setSelected({
+        ...selected, ...updated,
+        effective_price: updated.price ?? t?.base_price ?? 0,
+        rate_overridden: updated.price != null,
+        effective_max_guests: updated.max_guests ?? t?.max_guests ?? 1,
+        max_guests_overridden: updated.max_guests != null,
+      });
+      onToast?.(image ? `Room ${selected.num} photo updated` : `Room ${selected.num} photo removed`);
+      refresh();
+    } catch (e) { onToast?.(e.message || 'Could not update photo'); throw e; }
+    finally { setBusy(false); }
+  };
+
   const changeStatus = async (status) => {
     if (!selected) return;
     setBusy(true);
@@ -484,13 +561,13 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
       />
 
       {/* Per-type inventory — click to edit rate */}
-      <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 18 }}>
         {types.map(t => {
           const total = t.count || rooms.filter(r => r.type_id === t.id).length;
           const occupied = rooms.filter(r => r.type_id === t.id && (r.status === 'occupied' || r.status === 'reserved')).length;
           const free = total - occupied;
           return (
-            <div key={t.id} className="card" style={{ padding: '10px 14px', minWidth: 200, cursor: 'pointer', transition: 'border-color .15s, transform .15s' }}
+            <div key={t.id} className="card" style={{ padding: '10px 14px', cursor: 'pointer', transition: 'border-color .15s, transform .15s' }}
               onClick={() => openEditType(t)}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--gold-line)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = 'translateY(0)'; }}
@@ -579,7 +656,7 @@ export default function Rooms({ onToast, onNavigateWithPrefill }) {
           </>
         }
       >
-        {selected && <RoomDetail room={selected} type={typeFor(selected.type_id)} onChangeStatus={changeStatus} onSavePrice={savePrice} onSaveMaxGuests={saveMaxGuests} busy={busy} />}
+        {selected && <RoomDetail room={selected} type={typeFor(selected.type_id)} onChangeStatus={changeStatus} onSavePrice={savePrice} onSaveMaxGuests={saveMaxGuests} onSaveImage={saveImage} busy={busy} />}
       </Drawer>
 
       <Modal open={!!editingType} onClose={() => setEditingType(null)} title={editingType ? `Edit ${editingType.name}` : ''} width={460}

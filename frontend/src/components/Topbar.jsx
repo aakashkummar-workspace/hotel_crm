@@ -22,21 +22,21 @@ export default function Topbar({ pageTitle, onToggleSidebar, sidebarStyle, theme
       <button className="btn btn-ghost btn-icon" onClick={onToggleSidebar} title="Toggle sidebar">
         <Icon name={sidebarStyle === 'collapsed' ? 'chevronRight' : 'list'} size={18} />
       </button>
-      <div className="col" style={{ marginRight: 'auto' }}>
-        <div className="display" style={{ fontSize: 20, lineHeight: 1.1 }}>{pageTitle.title}</div>
-        {pageTitle.sub && <div style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 2 }}>{pageTitle.sub}</div>}
+      <div className="col" style={{ marginRight: 'auto', minWidth: 0 }}>
+        <div className="display topbar-title" style={{ fontSize: 20, lineHeight: 1.1 }}>{pageTitle.title}</div>
+        {pageTitle.sub && <div className="topbar-subtitle" style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 2 }}>{pageTitle.sub}</div>}
       </div>
 
       <div className="row gap-2">
-        <button className="btn" onClick={onOpenSearch} style={{ minWidth: 280, justifyContent: 'space-between', background: 'var(--bg-3)' }}>
+        <button className="btn topbar-search" onClick={onOpenSearch} style={{ minWidth: 280, justifyContent: 'space-between', background: 'var(--bg-3)' }}>
           <span className="row gap-2">
             <Icon name="search" size={14} color="var(--ink-4)" />
-            <span style={{ color: 'var(--ink-4)' }}>Search bookings, guests, rooms…</span>
+            <span className="topbar-search-text" style={{ color: 'var(--ink-4)' }}>Search bookings, guests, rooms…</span>
           </span>
           <span className="kbd">⌘K</span>
         </button>
 
-        <button className="btn btn-ghost btn-icon" onClick={onToggleTheme} title="Toggle theme">
+        <button className="btn btn-ghost btn-icon topbar-theme-toggle" onClick={onToggleTheme} title="Toggle theme">
           <Icon name={theme === 'light' ? 'moon' : 'sun'} size={18} />
         </button>
 
@@ -48,9 +48,9 @@ export default function Topbar({ pageTitle, onToggleSidebar, sidebarStyle, theme
           {notifOpen && (
             <>
               <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
-              <div className="card-elevated" style={{
+              <div className="card-elevated topbar-notif-panel" style={{
                 position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-                width: 360, zIndex: 51,
+                width: 360, maxWidth: 'calc(100vw - 24px)', zIndex: 51,
                 boxShadow: '0 20px 60px rgba(0,0,0,.5)',
               }}>
                 <div className="row" style={{ padding: '14px 16px', borderBottom: '1px solid var(--line)', justifyContent: 'space-between' }}>

@@ -122,6 +122,7 @@ const updateSchema = z.object({
   checkout: z.string().nullish(),
   price: z.number().int().nonnegative().nullable().optional(),
   max_guests: z.number().int().positive().nullable().optional(),
+  image: z.string().refine(s => s === '' || /^(https?:\/\/|data:image\/)/i.test(s), { message: 'image must be an http(s) URL or data:image/... URL' }).nullable().optional(),
 });
 
 const createSchema = z.object({
@@ -161,9 +162,10 @@ router.patch('/:num', (req, res, next) => {
     // For nullable overrides: only change if key present in body (allow setting to null = revert to type default)
     const nextPrice = ('price' in body) ? body.price : existing.price;
     const nextMaxGuests = ('max_guests' in body) ? body.max_guests : existing.max_guests;
+    const nextImage = ('image' in body) ? (body.image || null) : existing.image;
     const merged = { ...existing, ...body };
-    db.prepare(`UPDATE rooms SET status = ?, guest = ?, checkin = ?, checkout = ?, price = ?, max_guests = ? WHERE num = ?`)
-      .run(merged.status, merged.guest, merged.checkin, merged.checkout, nextPrice, nextMaxGuests, req.params.num);
+    db.prepare(`UPDATE rooms SET status = ?, guest = ?, checkin = ?, checkout = ?, price = ?, max_guests = ?, image = ? WHERE num = ?`)
+      .run(merged.status, merged.guest, merged.checkin, merged.checkout, nextPrice, nextMaxGuests, nextImage, req.params.num);
     res.json(db.prepare('SELECT * FROM rooms WHERE num = ?').get(req.params.num));
   } catch (e) { next(e); }
 });

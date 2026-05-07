@@ -272,9 +272,44 @@ a { color: inherit; text-decoration: none; }
   overflow-y: auto;
   padding: 28px 32px 48px;
 }
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.section-header-text { min-width: 0; }
+.section-header-title {
+  font-size: 32px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.section-header-sub {
+  color: var(--ink-3);
+  margin-top: 6px;
+  font-size: 14px;
+}
+.section-header-right { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.room-detail-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.room-detail-stats > * { min-width: 0; }
 @media (max-width: 720px) {
-  .page { padding: 16px 16px 32px; }
-  .topbar { padding: 0 16px; }
+  .room-detail-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .room-detail-stats > * { flex: initial !important; }
+  .room-detail-stat-rate,
+  .room-detail-stat-guests { grid-column: 1 / -1; }
 }
 
 .metric {
@@ -404,7 +439,176 @@ a { color: inherit; text-decoration: none; }
   to { transform: translateX(0); }
 }
 
+/* ============================================================
+   Responsive — tablet & mobile overrides
+   The desktop layout uses a fixed grid + many inline-styled grids
+   inside pages. Rather than edit every page we collapse multi-col
+   inline grids using attribute substring selectors, and provide a
+   slide-in sidebar overlay for the mobile nav button in Topbar.
+   ============================================================ */
+
+/* ---------- Tablet: tighten 4-col KPI strips to 2-cols ---------- */
+@media (max-width: 1024px) {
+  .page [style*="grid-template-columns: repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .page [style*="grid-template-columns: 1.6fr 1fr"],
+  .page [style*="grid-template-columns: 1fr 1.4fr"],
+  .page [style*="grid-template-columns: 1.3fr 1fr"],
+  .page [style*="grid-template-columns: 1.4fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  .page [style*="grid-template-columns: 1fr 380px"],
+  .page [style*="grid-template-columns: 380px 1fr"],
+  .page [style*="grid-template-columns: 220px 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Tables inside cards become horizontally scrollable */
+  .card:has(> .table) { overflow-x: auto; }
+}
+
+/* ---------- Sidebar: hidden by default below 900px;
+              opened as overlay when data-mobile-nav="open"  ---------- */
 @media (max-width: 900px) {
-  .app { grid-template-columns: 0 1fr !important; }
+  /* One track only — when .sidebar has display:none, CSS Grid auto-places
+     .main-area into the FIRST track. Using "0 1fr" would put it in the
+     zero-wide column, hiding the entire UI. */
+  .app { grid-template-columns: 1fr !important; }
   .sidebar { display: none; }
+
+  .app[data-mobile-nav="open"] .sidebar {
+    display: flex;
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: min(280px, 86vw);
+    z-index: 110;
+    background: var(--bg-2);
+    border-right: 1px solid var(--line);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+    animation: mobileNavIn .25s cubic-bezier(.2,.7,.2,1);
+  }
+  /* Floating tweak shouldn't apply when we're in mobile-overlay mode */
+  .app[data-mobile-nav="open"][data-sidebar="floating"] .sidebar {
+    left: 0; top: 0; bottom: 0;
+    border-radius: 0;
+    backdrop-filter: none;
+    background: var(--bg-2);
+  }
+}
+@keyframes mobileNavIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .5);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  animation: backdropIn .2s ease;
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ---------- Mobile: full responsive treatment ---------- */
+@media (max-width: 720px) {
+  /* Page padding & topbar */
+  .page { padding: 16px 14px 32px; }
+  .topbar {
+    height: 56px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+  .topbar-title { font-size: 16px !important; }
+  .topbar-subtitle { display: none !important; }
+  .topbar-search { min-width: 0 !important; padding: 8px !important; }
+  .topbar-search-text,
+  .topbar-search .kbd { display: none !important; }
+  .topbar .vdivider { display: none; }
+  .topbar-theme-toggle { display: none !important; }
+
+  /* Section headers stack with action row below the title */
+  .section-header { flex-direction: column; align-items: stretch; }
+  .section-header-title { font-size: 22px; }
+  .section-header-sub { font-size: 13px; }
+  .section-header-right { width: 100%; }
+  .section-header-right .btn,
+  .section-header-right .input,
+  .section-header-right select.input { flex: 1; min-width: 0; }
+  .section-header-right .input { width: auto !important; }
+
+  /* Collapse every multi-column inline-styled grid in pages to 1 col.
+     The 2-col stat boxes (repeat(2, 1fr)) stay as-is — they look fine. */
+  .page [style*="grid-template-columns: repeat(4, 1fr)"],
+  .page [style*="grid-template-columns: repeat(3, 1fr)"],
+  .page [style*="grid-template-columns: 1fr 1fr"],
+  .page [style*="grid-template-columns: 1.6fr 1fr"],
+  .page [style*="grid-template-columns: 1fr 1.4fr"],
+  .page [style*="grid-template-columns: 1.3fr 1fr"],
+  .page [style*="grid-template-columns: 1.4fr 1fr"],
+  .page [style*="grid-template-columns: 1fr 380px"],
+  .page [style*="grid-template-columns: 380px 1fr"],
+  .page [style*="grid-template-columns: 220px 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* The Coffee POS page sets height:100% + overflow:hidden on .page —
+     undo on mobile so the cart can stack below the menu naturally. */
+  .page[style*="overflow: hidden"][style*="height: 100%"] {
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+  /* The CRM grid forces a fixed viewport height — let it grow on mobile */
+  .page [style*="height: calc(100vh - 200px)"] {
+    height: auto !important;
+  }
+
+  /* Cards: tighter padding and metric scaling */
+  .card,
+  .card-elevated { border-radius: 12px; }
+  .metric { padding: 16px; }
+  .metric .metric-value { font-size: 28px; }
+
+  /* Generic flex rows that were laid out side-by-side at desktop:
+     allow them to wrap when content gets cramped. */
+  .page > .row,
+  .page .card > .row {
+    flex-wrap: wrap;
+  }
+
+  /* Tables: shrink padding and let cards that wrap a table scroll horizontally.
+     Scope to cards containing a table so dropdown menus in non-table cards
+     (e.g. row-action menus) aren't clipped by the implied overflow-y: auto. */
+  .card:has(> .table) { overflow-x: auto; }
+  .card:has(> .table) > .table { min-width: 640px; }
+  .table th { padding: 8px 10px; }
+  .table td { padding: 10px; font-size: 12px; }
+
+  /* Modal content padding tightens */
+  .toast {
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+
+  /* Avoid a horizontally-clipped sidebar floating tweak interfering */
+  .app[data-sidebar="floating"] .sidebar { display: none; }
+
+  /* Tweaks panel + FAB: keep above mobile chrome */
+  .twk-panel { right: 12px !important; bottom: 72px !important; left: 12px !important; width: auto !important; }
+  .twk-fab { right: 14px !important; bottom: 14px !important; }
+}
+
+/* ---------- Very small phones ---------- */
+@media (max-width: 420px) {
+  .topbar { padding: 0 8px; }
+  .section-header-title { font-size: 20px; }
+  .metric .metric-value { font-size: 24px; }
+  .btn { padding: 8px 12px; font-size: 12px; }
+  .btn-sm { padding: 5px 8px; }
 }
