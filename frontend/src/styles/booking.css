@@ -62,7 +62,17 @@ html { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.04);
 }
 
-/* ── Manage your booking — section layout ────────────────────────────── */
+/* ── Manage your booking — full-bleed section (mirrors .experiences) ── */
+.manage {
+  background: var(--bg-2);
+  margin: 0 -36px;
+  padding: 90px 36px;
+}
+.manage-inner { max-width: 1280px; margin: 0 auto; }
+@media (max-width: 980px) {
+  .manage { margin: 0; padding: 60px 18px; }
+}
+
 .manage-tabs { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
 
 .manage-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }

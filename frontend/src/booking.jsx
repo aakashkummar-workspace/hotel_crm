@@ -432,8 +432,8 @@ function App() {
         </div>
       </section>
 
-      <section id="manage" style={{ background: 'var(--bg-2)', margin: '0 -36px', padding: '90px 36px' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <section id="manage" className="manage" style={{ maxWidth: 'none' }}>
+        <div className="manage-inner">
           <div className="section-head">
             <div>
               <div className="eyebrow">Manage your booking</div>
