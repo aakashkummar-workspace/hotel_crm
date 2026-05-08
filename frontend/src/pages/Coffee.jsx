@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Icon from '../components/Icon.jsx';
-import { Modal, Pill, SectionHeader } from '../components/primitives.jsx';
+import { ConfirmDialog, Modal, Pill, SectionHeader } from '../components/primitives.jsx';
 import { api, downloadCSV, fmtINR } from '../api.js';
 
 function DailyStat({ label, value, sub }) {
@@ -24,6 +24,34 @@ export default function Coffee({ onToast }) {
   const [busy, setBusy] = useState(false);
   const [showZReport, setShowZReport] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [itemForm, setItemForm] = useState({ name: '', category: 'Espresso', price: 0, description: '', emoji: '☕' });
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  const submitMenuItem = async () => {
+    if (!itemForm.name || !itemForm.price) { onToast?.('Name and price required'); return; }
+    setBusy(true);
+    try {
+      const body = { ...itemForm, price: Number(itemForm.price) };
+      if (editingItem) await api.coffee.updateMenu(editingItem.id, body);
+      else await api.coffee.addMenu(body);
+      onToast?.(editingItem ? 'Menu item updated' : 'Menu item added');
+      setEditingItem(null);
+      setItemForm({ name: '', category: itemForm.category, price: 0, description: '', emoji: '☕' });
+      refresh();
+    } catch (e) { onToast?.(e.message || 'Could not save'); }
+    finally { setBusy(false); }
+  };
+
+  const deleteMenuItem = async () => {
+    if (!confirmDel) return;
+    try {
+      await api.coffee.removeMenu(confirmDel.id);
+      onToast?.('Item removed');
+      setConfirmDel(null);
+      refresh();
+    } catch (e) { onToast?.(e.message); }
+  };
 
   const refresh = async () => {
     const [m, o] = await Promise.all([api.coffee.menu(), api.coffee.orders()]);
@@ -224,30 +252,90 @@ export default function Coffee({ onToast }) {
         </div>
       </Modal>
 
-      <Modal open={showMenu} onClose={() => setShowMenu(false)} title="Café menu" width={620}>
-        <div className="col gap-3">
-          {categories.filter(c => c !== 'All').map(cat => {
-            const items = menu.filter(m => m.category === cat);
-            return (
-              <div key={cat}>
-                <div className="label" style={{ marginBottom: 8 }}>{cat}</div>
-                {items.map(item => (
-                  <div key={item.id} className="row" style={{ justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-                    <div className="row gap-3">
-                      <span style={{ fontSize: 18 }}>{item.emoji}</span>
-                      <div>
-                        <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{item.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{item.description}</div>
-                      </div>
-                    </div>
-                    <div style={{ color: 'var(--gold-2)', fontWeight: 500, fontSize: 13 }}>{fmtINR(item.price)}</div>
-                  </div>
-                ))}
+      <Modal open={showMenu} onClose={() => { setShowMenu(false); setEditingItem(null); }} title="Manage café menu" width={620}
+        footer={<>
+          <button className="btn btn-ghost" onClick={() => { setEditingItem(null); setItemForm({ name: '', category: 'Espresso', price: 0, description: '', emoji: '☕' }); }}>
+            {editingItem ? 'New item' : 'Clear'}
+          </button>
+          <button className="btn btn-primary" onClick={submitMenuItem} disabled={busy}>
+            <Icon name="check" size={14} strokeWidth={2.4} />{editingItem ? 'Update item' : 'Add item'}
+          </button>
+        </>}>
+        <div className="col gap-4">
+          {/* Add / edit form */}
+          <div className="card" style={{ padding: 16, background: 'var(--bg-3)' }}>
+            <div className="display" style={{ fontSize: 14, marginBottom: 10 }}>
+              {editingItem ? `Edit ${editingItem.id}` : 'Add new item'}
+            </div>
+            <div className="row gap-3" style={{ marginBottom: 10 }}>
+              <div style={{ flex: 2 }}>
+                <div className="label" style={{ marginBottom: 4 }}>Name *</div>
+                <input className="input" placeholder="Aurelia Espresso"
+                  value={itemForm.name} onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))} />
               </div>
-            );
-          })}
+              <div style={{ flex: 1 }}>
+                <div className="label" style={{ marginBottom: 4 }}>Category</div>
+                <select className="input" value={itemForm.category} onChange={e => setItemForm(f => ({ ...f, category: e.target.value }))}>
+                  {['Espresso','Filter','Tea','Cold','Pastry','All-Day'].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="row gap-3">
+              <div style={{ flex: 1 }}>
+                <div className="label" style={{ marginBottom: 4 }}>Price (₹) *</div>
+                <input className="input" type="number" min="0"
+                  value={itemForm.price} onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))} />
+              </div>
+              <div style={{ width: 90 }}>
+                <div className="label" style={{ marginBottom: 4 }}>Emoji</div>
+                <input className="input" value={itemForm.emoji} onChange={e => setItemForm(f => ({ ...f, emoji: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <div className="label" style={{ marginBottom: 4 }}>Description</div>
+              <input className="input" placeholder="House blend, double shot"
+                value={itemForm.description} onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+          </div>
+
+          {/* Existing items, grouped by category */}
+          <div>
+            <div className="label" style={{ marginBottom: 8 }}>Existing items ({menu.length})</div>
+            {categories.filter(c => c !== 'All').map(cat => {
+              const items = menu.filter(m => m.category === cat);
+              if (items.length === 0) return null;
+              return (
+                <div key={cat} style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{cat}</div>
+                  {items.map(item => (
+                    <div key={item.id} className="row gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                      <span style={{ fontSize: 18 }}>{item.emoji}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-4)' }}>{item.description || '—'}</div>
+                      </div>
+                      <span style={{ color: 'var(--gold-2)', fontWeight: 500, fontSize: 13 }}>{fmtINR(item.price)}</span>
+                      <button className="btn btn-ghost btn-sm" title="Edit"
+                        onClick={() => { setEditingItem(item); setItemForm({ name: item.name, category: item.category, price: item.price, description: item.description || '', emoji: item.emoji || '' }); }}>
+                        <Icon name="edit" size={12} />
+                      </button>
+                      <button className="btn btn-ghost btn-sm" title="Delete" onClick={() => setConfirmDel(item)}>
+                        <Icon name="trash" size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </Modal>
+
+      <ConfirmDialog open={!!confirmDel}
+        title="Delete menu item?"
+        body={confirmDel ? `${confirmDel.name} will be removed from the café menu.` : ''}
+        confirmLabel="Delete" danger
+        onCancel={() => setConfirmDel(null)} onConfirm={deleteMenuItem} />
     </div>
   );
 }

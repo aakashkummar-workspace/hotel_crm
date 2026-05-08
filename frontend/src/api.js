@@ -77,6 +77,9 @@ export const api = {
   },
   coffee: {
     menu: () => request('/coffee/menu'),
+    addMenu: (body) => request('/coffee/menu', { method: 'POST', body }),
+    updateMenu: (id, body) => request(`/coffee/menu/${id}`, { method: 'PATCH', body }),
+    removeMenu: (id) => request(`/coffee/menu/${id}`, { method: 'DELETE' }),
     orders: () => request('/coffee/orders'),
     createOrder: (body) => request('/coffee/orders', { method: 'POST', body }),
   },
