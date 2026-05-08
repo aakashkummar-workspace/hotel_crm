@@ -111,7 +111,7 @@ export default function Coffee({ onToast }) {
   };
 
   return (
-    <div className="page page-enter" style={{ paddingBottom: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="page page-enter">
       <SectionHeader
         eyebrow="Café"
         title="Coffee Shop"
@@ -124,22 +124,22 @@ export default function Coffee({ onToast }) {
         }
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, flex: 1, minHeight: 0 }}>
-        <div className="col" style={{ minHeight: 0 }}>
-          <div className="row gap-3" style={{ marginBottom: 14, flexShrink: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, alignItems: 'start' }}>
+        <div className="col">
+          <div className="row gap-3" style={{ marginBottom: 14 }}>
             <DailyStat label="Orders today" value={orders.length} sub="+18% vs yesterday" />
             <DailyStat label="Revenue today" value={fmtINR(todayTotal)} sub={`Avg ${fmtINR(orders.length ? Math.round(todayTotal / orders.length) : 0)} / order`} />
             <DailyStat label="Top item" value="Cappuccino" sub="14 sold today" />
           </div>
 
-          <div className="row gap-2" style={{ marginBottom: 16, flexShrink: 0, flexWrap: 'wrap' }}>
+          <div className="row gap-2" style={{ marginBottom: 16, flexWrap: 'wrap' }}>
             {categories.map(c => (
               <button key={c} className="btn btn-sm" onClick={() => setCategory(c)}
                 style={category === c ? { background: 'var(--gold-soft)', borderColor: 'var(--gold-line)', color: 'var(--gold-2)' } : {}}>{c}</button>
             ))}
           </div>
 
-          <div style={{ overflowY: 'auto', paddingRight: 8, paddingBottom: 24 }}>
+          <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
               {filtered.map(item => (
                 <button key={item.id} onClick={() => addToCart(item)} className="card"
@@ -158,7 +158,7 @@ export default function Coffee({ onToast }) {
           </div>
         </div>
 
-        <div className="card-elevated col" style={{ minHeight: 0, marginBottom: 24 }}>
+        <div className="card-elevated col" style={{ position: 'sticky', top: 16, alignSelf: 'start', maxHeight: 'calc(100vh - 100px)' }}>
           <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--line)' }}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <div className="display" style={{ fontSize: 18 }}>New Order</div>
@@ -199,7 +199,7 @@ export default function Coffee({ onToast }) {
           </div>
 
           {cart.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
               <div style={{ textAlign: 'center', color: 'var(--ink-4)' }}>
                 <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--bg-3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                   <Icon name="cup" size={20} />
@@ -208,7 +208,7 @@ export default function Coffee({ onToast }) {
               </div>
             </div>
           ) : (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', minHeight: 0 }}>
               {cart.map(item => (
                 <div key={item.id} className="row gap-3" style={{ padding: '10px 20px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
