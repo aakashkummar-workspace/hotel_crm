@@ -442,7 +442,7 @@ function App() {
             <p>No login needed. Look up a single booking by reference, or pull up every stay you've had with us using the phone or email you booked with.</p>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
+          <div className="manage-tabs">
             <button className={mode === 'lookup' ? 'btn btn-primary' : 'btn'} onClick={() => { setMode('lookup'); setHistory(null); }}>
               Look up a booking
             </button>
@@ -452,24 +452,22 @@ function App() {
           </div>
 
           {mode === 'lookup' && (
-            <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 22, padding: 32, maxWidth: 720 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div className="public-card" style={{ maxWidth: 720 }}>
+              <div className="manage-form-row">
                 <div>
-                  <div className="label">Booking reference *</div>
-                  <input className="popover-input" placeholder="BK-2851"
-                    value={lookupForm.ref} onChange={e => setLookupForm(f => ({ ...f, ref: e.target.value }))}
-                    style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--bg-3)', color: 'var(--ink)', fontSize: 15, outline: 'none', marginTop: 6 }} />
+                  <span className="manage-field-label">Booking reference *</span>
+                  <input className="public-input" placeholder="BK-2851"
+                    value={lookupForm.ref} onChange={e => setLookupForm(f => ({ ...f, ref: e.target.value }))} />
                 </div>
                 <div>
-                  <div className="label">Phone (last 4 ok) or email</div>
-                  <input placeholder="9876543210 or you@example.com"
+                  <span className="manage-field-label">Phone (last 4 ok) or email</span>
+                  <input className="public-input" placeholder="9876543210 or you@example.com"
                     value={lookupForm.phone || lookupForm.email}
                     onChange={e => {
                       const v = e.target.value;
                       if (v.includes('@')) setLookupForm(f => ({ ...f, email: v, phone: '' }));
                       else setLookupForm(f => ({ ...f, phone: v, email: '' }));
-                    }}
-                    style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--bg-3)', color: 'var(--ink)', fontSize: 15, outline: 'none', marginTop: 6 }} />
+                    }} />
                 </div>
               </div>
               <button className="btn btn-gold" onClick={submitLookup} disabled={lookupBusy}>
@@ -482,27 +480,27 @@ function App() {
                 </div>
               )}
               {lookupResult?.found && (
-                <div style={{ marginTop: 20, padding: 20, background: 'var(--bg-3)', borderRadius: 16, border: '1px solid var(--line-2)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                <div className="lookup-result">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, gap: 14, flexWrap: 'wrap' }}>
                     <div>
-                      <div className="display" style={{ fontSize: 24 }}>{lookupResult.booking.guest}</div>
+                      <div className="display" style={{ fontSize: 24, lineHeight: 1.1 }}>{lookupResult.booking.guest}</div>
                       <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>{lookupResult.booking.id} · Room {lookupResult.booking.room}</div>
                     </div>
                     <span style={{
                       padding: '6px 12px', borderRadius: 999,
-                      fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
                       background: lookupResult.booking.status === 'checked-in' ? 'rgba(138,111,60,0.15)' : lookupResult.booking.status === 'confirmed' ? 'rgba(79,125,74,0.15)' : lookupResult.booking.status === 'checked-out' ? 'rgba(110,100,80,0.15)' : 'rgba(176,74,61,0.15)',
                       color: lookupResult.booking.status === 'checked-in' ? 'var(--gold)' : lookupResult.booking.status === 'confirmed' ? 'var(--green)' : lookupResult.booking.status === 'checked-out' ? 'var(--ink-3)' : 'var(--red)',
                     }}>{lookupResult.booking.status}</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, fontSize: 13 }}>
-                    <div><div className="label">Check-in</div><div style={{ fontSize: 15, marginTop: 2 }}>{lookupResult.booking.checkin}</div></div>
-                    <div><div className="label">Check-out</div><div style={{ fontSize: 15, marginTop: 2 }}>{lookupResult.booking.checkout}</div></div>
-                    <div><div className="label">Nights</div><div style={{ fontSize: 15, marginTop: 2 }}>{lookupResult.booking.nights}</div></div>
-                    <div><div className="label">Total</div><div style={{ fontSize: 15, marginTop: 2, color: 'var(--gold)', fontWeight: 500 }}>₹{(lookupResult.booking.amount || 0).toLocaleString('en-IN')}</div></div>
+                  <div className="lookup-result-grid">
+                    <div><span className="manage-field-label">Check-in</span><div style={{ fontSize: 15, marginTop: 2 }}>{lookupResult.booking.checkin}</div></div>
+                    <div><span className="manage-field-label">Check-out</span><div style={{ fontSize: 15, marginTop: 2 }}>{lookupResult.booking.checkout}</div></div>
+                    <div><span className="manage-field-label">Nights</span><div style={{ fontSize: 15, marginTop: 2 }}>{lookupResult.booking.nights}</div></div>
+                    <div><span className="manage-field-label">Total</span><div style={{ fontSize: 15, marginTop: 2, color: 'var(--gold)', fontWeight: 600 }}>₹{(lookupResult.booking.amount || 0).toLocaleString('en-IN')}</div></div>
                   </div>
                   {lookupResult.booking.late_fee > 0 && (
-                    <div style={{ marginTop: 14, padding: 10, background: 'rgba(212,168,71,0.12)', borderRadius: 8, fontSize: 12, color: 'var(--gold)' }}>
+                    <div style={{ marginTop: 18, padding: '10px 14px', background: 'rgba(212,168,71,0.12)', borderRadius: 8, fontSize: 12, color: 'var(--gold)' }}>
                       Late check-out fee: ₹{lookupResult.booking.late_fee.toLocaleString('en-IN')} ({lookupResult.booking.late_hours.toFixed(1)} hours past grace window)
                     </div>
                   )}
@@ -512,43 +510,51 @@ function App() {
           )}
 
           {mode === 'history' && (
-            <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 22, padding: 32 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-                <input placeholder="Phone (last 4 ok)" value={historyFilters.phone}
-                  onChange={e => setHistoryFilters(f => ({ ...f, phone: e.target.value }))}
-                  style={{ padding: '12px 14px', border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--bg-3)', color: 'var(--ink)', fontSize: 14, outline: 'none' }} />
-                <input placeholder="or Email" value={historyFilters.email}
-                  onChange={e => setHistoryFilters(f => ({ ...f, email: e.target.value }))}
-                  style={{ padding: '12px 14px', border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--bg-3)', color: 'var(--ink)', fontSize: 14, outline: 'none' }} />
-                <select value={historyFilters.status} onChange={e => setHistoryFilters(f => ({ ...f, status: e.target.value }))}
-                  style={{ padding: '12px 14px', border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--bg-3)', color: 'var(--ink)', fontSize: 14, outline: 'none' }}>
-                  <option value="all">All statuses</option>
-                  <option value="pending">Pending</option><option value="confirmed">Confirmed</option>
-                  <option value="checked-in">Checked-in</option><option value="checked-out">Checked-out</option>
-                </select>
-                <input type="date" placeholder="Since" value={historyFilters.since}
-                  onChange={e => setHistoryFilters(f => ({ ...f, since: e.target.value }))}
-                  style={{ padding: '12px 14px', border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--bg-3)', color: 'var(--ink)', fontSize: 14, outline: 'none' }} />
+            <div className="public-card" style={{ maxWidth: 1100 }}>
+              <div className="manage-history-row">
+                <div>
+                  <span className="manage-field-label">Phone (last 4 ok)</span>
+                  <input className="public-input" placeholder="9876543210" value={historyFilters.phone}
+                    onChange={e => setHistoryFilters(f => ({ ...f, phone: e.target.value }))} />
+                </div>
+                <div>
+                  <span className="manage-field-label">or Email</span>
+                  <input className="public-input" placeholder="you@example.com" value={historyFilters.email}
+                    onChange={e => setHistoryFilters(f => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div>
+                  <span className="manage-field-label">Status</span>
+                  <select className="public-input" value={historyFilters.status} onChange={e => setHistoryFilters(f => ({ ...f, status: e.target.value }))}>
+                    <option value="all">All statuses</option>
+                    <option value="pending">Pending</option><option value="confirmed">Confirmed</option>
+                    <option value="checked-in">Checked-in</option><option value="checked-out">Checked-out</option>
+                  </select>
+                </div>
+                <div>
+                  <span className="manage-field-label">Since</span>
+                  <input className="public-input" type="date" value={historyFilters.since}
+                    onChange={e => setHistoryFilters(f => ({ ...f, since: e.target.value }))} />
+                </div>
                 <button className="btn btn-gold" onClick={submitHistory} disabled={historyBusy}>
                   {historyBusy ? 'Searching…' : 'Show history'}
                 </button>
               </div>
               {history && (
-                <div style={{ marginTop: 18 }}>
-                  <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 12 }}>{history.count} booking{history.count !== 1 ? 's' : ''} found</div>
+                <div style={{ marginTop: 22 }}>
+                  <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 14 }}>{history.count} booking{history.count !== 1 ? 's' : ''} found</div>
                   {history.bookings.map(b => (
-                    <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'var(--bg-3)', borderRadius: 12, marginBottom: 8, fontSize: 14 }}>
-                      <div>
+                    <div key={b.id} className="history-row">
+                      <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 500 }}>{b.id} · Room {b.room}</div>
                         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{b.checkin} → {b.checkout} · {b.nights} night{b.nights !== 1 ? 's' : ''}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 999, textTransform: 'capitalize', background: b.status === 'checked-out' ? 'rgba(110,100,80,0.15)' : 'rgba(138,111,60,0.15)', color: b.status === 'checked-out' ? 'var(--ink-3)' : 'var(--gold)' }}>{b.status}</span>
-                        <span style={{ color: 'var(--gold)', fontWeight: 500 }}>₹{(b.amount || 0).toLocaleString('en-IN')}</span>
+                        <span style={{ fontSize: 11, padding: '4px 12px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, background: b.status === 'checked-out' ? 'rgba(110,100,80,0.15)' : 'rgba(138,111,60,0.15)', color: b.status === 'checked-out' ? 'var(--ink-3)' : 'var(--gold)' }}>{b.status}</span>
+                        <span style={{ color: 'var(--gold)', fontWeight: 600 }}>₹{(b.amount || 0).toLocaleString('en-IN')}</span>
                       </div>
                     </div>
                   ))}
-                  {history.count === 0 && <div style={{ padding: 20, textAlign: 'center', color: 'var(--ink-4)' }}>No bookings found.</div>}
+                  {history.count === 0 && <div style={{ padding: 28, textAlign: 'center', color: 'var(--ink-4)' }}>No bookings found.</div>}
                 </div>
               )}
             </div>
@@ -588,19 +594,19 @@ function App() {
               <strong style={{ color: 'var(--gold)' }}>Stays of {fleet.free_from_nights} nights or more</strong> include a complimentary hotel car for sightseeing, the airport, or wherever the day takes you.
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+          <div className="fleet-grid">
             {fleet.vehicles.map(v => (
-              <article key={v.id} style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 20, overflow: 'hidden' }}>
-                <div style={{ aspectRatio: '4/3', backgroundImage: v.image ? `url(${v.image})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'var(--bg-3)', position: 'relative' }}>
-                  <span style={{ position: 'absolute', top: 14, left: 14, padding: '4px 10px', borderRadius: 999, background: 'var(--panel)', fontSize: 11, fontWeight: 500, color: v.status === 'available' ? 'var(--green)' : 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <article key={v.id} className="fleet-card">
+                <div className="fleet-card-img" style={{ backgroundImage: v.image ? `url(${v.image})` : 'none' }}>
+                  <span className="fleet-status-pill" style={{ color: v.status === 'available' ? 'var(--green)' : 'var(--ink-3)' }}>
                     {v.status === 'available' ? 'Available' : v.status}
                   </span>
                 </div>
-                <div style={{ padding: '22px 24px 24px' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400, letterSpacing: '-0.01em', margin: 0, lineHeight: 1.1 }}>{v.name}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10, fontSize: 13, color: 'var(--ink-3)' }}>
+                <div className="fleet-card-body">
+                  <h3 className="fleet-card-name">{v.name}</h3>
+                  <div className="fleet-card-meta">
                     <span>{v.capacity} seats</span>
-                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-4)' }} />
+                    <span className="dot" />
                     <span>Driver included</span>
                   </div>
                 </div>
