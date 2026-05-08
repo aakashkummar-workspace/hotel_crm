@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { api, setToken } from '../api.js';
 import Icon from '../components/Icon.jsx';
 
-export default function Login({ onSuccess }) {
-  const [email, setEmail] = useState('concierge@aurelia.in');
+export default function Login({ onSuccess, profile }) {
+  const hotelName = (profile?.name || 'Hotel').trim();
+  const initial = (hotelName[0] || 'H').toUpperCase();
+  const defaultEmail = profile?.email || 'concierge@aurelia.in';
+  const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -37,9 +40,9 @@ export default function Login({ onSuccess }) {
             background: 'linear-gradient(135deg, #e3c688, #8a6f3c)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#15110c', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 22,
-          }}>A</div>
+          }}>{initial}</div>
           <div>
-            <div className="display" style={{ fontSize: 22, lineHeight: 1.1 }}>Aurelia</div>
+            <div className="display" style={{ fontSize: 22, lineHeight: 1.1 }}>{hotelName}</div>
             <div style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 2 }}>Sign in to the hotel CRM</div>
           </div>
         </div>

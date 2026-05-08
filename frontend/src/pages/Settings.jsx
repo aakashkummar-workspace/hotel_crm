@@ -13,7 +13,7 @@ const DEFAULT_INTEGRATIONS = {
   'Google Calendar': false, 'Cloudinary': true, 'Mailchimp': false,
 };
 
-export default function Settings({ onToast }) {
+export default function Settings({ onToast, onProfileSaved }) {
   const [tab, setTab] = useState('hotel');
   const [profile, setProfile] = useState({ name: '', tagline: '', location: '', email: '', phone: '', gstin: '', currency: 'INR', about: '' });
   const [tax, setTax] = useState({ room: 18, cafe: 5, hall: 18, invoice_prefix: 'INV-2026-', invoice_next: 425 });
@@ -47,8 +47,13 @@ export default function Settings({ onToast }) {
 
   const saveProfile = async () => {
     setSaving(true);
-    try { await api.settings.updateProfile(profile); onToast('Hotel profile saved'); }
-    catch (e) { onToast(e.message || 'Could not save'); }
+    try {
+      const saved = await api.settings.updateProfile(profile);
+      onToast('Hotel profile saved');
+      // Push the new profile up to App so the sidebar, login screen, browser title
+      // and public booking page reflect the change without a reload.
+      onProfileSaved?.(saved || profile);
+    } catch (e) { onToast(e.message || 'Could not save'); }
     finally { setSaving(false); }
   };
 

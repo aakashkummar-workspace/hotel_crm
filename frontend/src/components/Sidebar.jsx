@@ -24,7 +24,12 @@ const NAV_GROUPS = [
   { label: 'Account', items: [{ id: 'settings', label: 'Settings', icon: 'settings' }] },
 ];
 
-export default function Sidebar({ active, onNavigate, onOpenBookingPage, onOpenSearch, user }) {
+export default function Sidebar({ active, onNavigate, onOpenBookingPage, onOpenSearch, user, profile }) {
+  const hotelName = (profile?.name || 'Hotel').trim();
+  const initial = (hotelName[0] || 'H').toUpperCase();
+  const taglineWord = (profile?.tagline || '').split(/\s+/)[0] || '';
+  const locationWord = (profile?.location || '').split(',')[0]?.trim() || '';
+  const subtitle = [taglineWord, locationWord].filter(Boolean).join(' · ') || 'Hotel CRM';
   return (
     <aside className="sidebar">
       <div style={{ padding: '20px 16px 12px' }}>
@@ -35,10 +40,10 @@ export default function Sidebar({ active, onNavigate, onOpenBookingPage, onOpenS
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
             color: '#15110c', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 18,
-          }}>A</div>
+          }}>{initial}</div>
           <div className="sidebar-brand-text" style={{ overflow: 'hidden' }}>
-            <div className="display" style={{ fontSize: 17, lineHeight: 1.1, color: 'var(--ink)' }}>Aurelia</div>
-            <div style={{ fontSize: 10, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 2 }}>Heritage · Pondi</div>
+            <div className="display" style={{ fontSize: 17, lineHeight: 1.1, color: 'var(--ink)' }} title={hotelName}>{hotelName}</div>
+            <div style={{ fontSize: 10, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</div>
           </div>
         </div>
       </div>

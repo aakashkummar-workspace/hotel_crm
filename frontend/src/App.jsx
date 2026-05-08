@@ -57,6 +57,19 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [bookingPrefill, setBookingPrefill] = useState(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [profile, setProfile] = useState(null);
+
+  // Load the hotel profile early so the brand block, document title, login
+  // screen and every header use the latest hotel name.
+  useEffect(() => {
+    api.publicSite.profile().then(setProfile).catch(() => { /* no-op */ });
+  }, []);
+
+  // Keep the browser tab title in sync with the hotel name.
+  useEffect(() => {
+    const name = profile?.name?.trim();
+    document.title = name ? `${name} — Hotel CRM` : 'Hotel CRM';
+  }, [profile?.name]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -109,14 +122,18 @@ export default function App() {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--ink-3)', fontSize: 14 }}>Loading…</div>;
   }
   if (!user) {
-    return <Login onSuccess={(u) => { setUser(u); setToast(`Welcome back, ${u.name.split(' ')[0]}`); }} />;
+    return <Login profile={profile} onSuccess={(u) => { setUser(u); setToast(`Welcome back, ${u.name.split(' ')[0]}`); }} />;
   }
 
   const navigateWithPrefill = (target, prefill) => {
     setBookingPrefill(prefill || null);
     navigate(target);
   };
-  const props = { onNavigate: navigate, onToast: setToast, onNavigateWithPrefill: navigateWithPrefill };
+  const props = {
+    onNavigate: navigate, onToast: setToast,
+    onNavigateWithPrefill: navigateWithPrefill,
+    profile, onProfileSaved: setProfile,
+  };
   const pageEl = {
     dashboard: <Dashboard {...props} />,
     rooms: <Rooms {...props} />,
@@ -139,6 +156,7 @@ export default function App() {
         onOpenBookingPage={() => { setMobileNavOpen(false); window.open('/booking.html', '_blank'); }}
         onOpenSearch={() => { setMobileNavOpen(false); setPaletteOpen(true); }}
         user={user}
+        profile={profile}
       />
       <div className="main-area">
         <Topbar

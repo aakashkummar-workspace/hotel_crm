@@ -209,6 +209,13 @@ function App() {
     api.publicSite.profile().then(setProfile);
   }, []);
 
+  // Keep the browser tab title in sync with the hotel name (so renaming the
+  // hotel in Settings flows all the way out to the public site too).
+  useEffect(() => {
+    const name = profile?.name?.trim();
+    document.title = name ? `Book your stay — ${name}` : 'Book your stay';
+  }, [profile?.name]);
+
   const guestSum = guests.adults + guests.children;
   const guestLabel = `${guestSum} guest${guestSum !== 1 ? 's' : ''}`;
   const nights = checkin && checkout ? Math.round((checkout - checkin) / 86400000) : 0;
