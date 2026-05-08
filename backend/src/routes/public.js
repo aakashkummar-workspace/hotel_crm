@@ -47,6 +47,75 @@ const enquirySchema = z.object({
   amount: z.number().int().nonnegative().optional(),
 });
 
+// Lookup a single booking by reference + last 4 digits of phone (or email).
+// Lets returning guests see the live status of their reservation without login.
+router.get('/lookup', (req, res) => {
+  const ref = String(req.query.ref || '').trim().toUpperCase();
+  const phone = String(req.query.phone || '').replace(/\D/g, '');
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!ref) return res.json({ found: false, error: 'Booking reference required' });
+
+  const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(ref);
+  if (!b) return res.json({ found: false, error: 'No booking with that reference' });
+
+  // Light verification — match either last 4 digits of phone OR the email
+  const bookingPhone = (b.phone || '').replace(/\D/g, '');
+  const phoneMatches = phone && bookingPhone && bookingPhone.endsWith(phone.slice(-4));
+  const emailMatches = email && (b.email || '').toLowerCase() === email;
+  if (!phoneMatches && !emailMatches) {
+    return res.json({ found: false, error: "We couldn't verify that booking. Check the phone or email used to book." });
+  }
+
+  res.json({
+    found: true,
+    booking: {
+      id: b.id, guest: b.guest, room: b.room,
+      checkin: b.checkin, checkout: b.checkout,
+      nights: b.nights, amount: b.amount,
+      status: b.status, source: b.source,
+      created_at: b.created_at,
+      late_hours: b.late_hours || 0, late_fee: b.late_fee || 0,
+    },
+  });
+});
+
+// All bookings for a phone or email — guest-facing booking history with filters.
+router.get('/history', (req, res) => {
+  const phone = String(req.query.phone || '').replace(/\D/g, '');
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!phone && !email) return res.json({ bookings: [] });
+
+  const all = db.prepare('SELECT * FROM bookings ORDER BY created_at DESC').all();
+  const matches = all.filter(b => {
+    const bp = (b.phone || '').replace(/\D/g, '');
+    const be = (b.email || '').toLowerCase();
+    return (phone && bp && bp.endsWith(phone.slice(-4))) || (email && be === email);
+  });
+
+  // Filters
+  const status = String(req.query.status || '').trim();
+  const room = String(req.query.room || '').trim();
+  const since = String(req.query.since || '').trim();
+  const filtered = matches.filter(b => {
+    if (status && status !== 'all' && b.status !== status) return false;
+    if (room && room !== 'all' && b.room !== room) return false;
+    if (since) {
+      const t = (b.created_at || '').slice(0, 10);
+      if (t && t < since) return false;
+    }
+    return true;
+  });
+
+  res.json({
+    count: filtered.length,
+    bookings: filtered.map(b => ({
+      id: b.id, room: b.room, checkin: b.checkin, checkout: b.checkout,
+      nights: b.nights, amount: b.amount, status: b.status, source: b.source,
+      created_at: b.created_at,
+    })),
+  });
+});
+
 router.post('/enquiries', (req, res, next) => {
   try {
     const body = enquirySchema.parse(req.body);

@@ -25,6 +25,8 @@ import reportsRoutes from './routes/reports.js';
 import publicRoutes from './routes/public.js';
 import activityRoutes from './routes/activity.js';
 import searchRoutes from './routes/search.js';
+import vehiclesRoutes from './routes/vehicles.js';
+import kitchenRoutes from './routes/kitchen.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -68,6 +70,8 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/vehicles', vehiclesRoutes);
+app.use('/api/kitchen', kitchenRoutes);
 
 // Production: serve frontend build
 const distDir = resolve(__dirname, '..', '..', 'frontend', 'dist');

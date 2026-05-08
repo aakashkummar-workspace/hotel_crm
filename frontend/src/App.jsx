@@ -17,6 +17,8 @@ import CRM from './pages/CRM.jsx';
 import Reports from './pages/Reports.jsx';
 import Invoices from './pages/Invoices.jsx';
 import Settings from './pages/Settings.jsx';
+import Vehicles from './pages/Vehicles.jsx';
+import Kitchen from './pages/Kitchen.jsx';
 
 const FONT_PAIRINGS = {
   'fraunces-geist': { display: "'Fraunces', Georgia, serif", body: "'Geist', system-ui, sans-serif", label: 'Fraunces × Geist' },
@@ -30,7 +32,9 @@ const PAGE_TITLES = {
   rooms: { title: 'Rooms', sub: 'Manage all rooms across floors' },
   bookings: { title: 'Bookings', sub: 'Reservations and check-ins' },
   coffee: { title: 'Coffee Shop', sub: 'Café POS and daily sales' },
+  kitchen: { title: 'Cloud Kitchen', sub: 'Live orders, prep board and menu' },
   hall: { title: 'Mini Hall', sub: 'Event reservations' },
+  vehicles: { title: 'Vehicles', sub: 'Fleet, trips and long-stay rides' },
   expenses: { title: 'Expenses', sub: 'Track spending and profit' },
   crm: { title: 'Guests', sub: 'Customer profiles and history' },
   reports: { title: 'Reports', sub: 'Analytics across modules' },
@@ -139,7 +143,9 @@ export default function App() {
     rooms: <Rooms {...props} />,
     bookings: <Bookings {...props} prefill={bookingPrefill} onPrefillConsumed={() => setBookingPrefill(null)} />,
     coffee: <Coffee {...props} />,
+    kitchen: <Kitchen {...props} />,
     hall: <Hall {...props} />,
+    vehicles: <Vehicles {...props} />,
     expenses: <Expenses {...props} />,
     crm: <CRM {...props} />,
     reports: <Reports {...props} />,

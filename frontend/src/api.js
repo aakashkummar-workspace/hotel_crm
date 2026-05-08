@@ -50,6 +50,25 @@ export const api = {
     create: (body) => request('/bookings', { method: 'POST', body }),
     update: (id, body) => request(`/bookings/${id}`, { method: 'PATCH', body }),
     remove: (id) => request(`/bookings/${id}`, { method: 'DELETE' }),
+    lateToday: () => request('/bookings/late-today'),
+  },
+  vehicles: {
+    list: () => request('/vehicles'),
+    create: (body) => request('/vehicles', { method: 'POST', body }),
+    update: (id, body) => request(`/vehicles/${id}`, { method: 'PATCH', body }),
+    remove: (id) => request(`/vehicles/${id}`, { method: 'DELETE' }),
+    createTrip: (body) => request('/vehicles/trips', { method: 'POST', body }),
+    updateTrip: (id, body) => request(`/vehicles/trips/${id}`, { method: 'PATCH', body }),
+    removeTrip: (id) => request(`/vehicles/trips/${id}`, { method: 'DELETE' }),
+  },
+  kitchen: {
+    menu: () => request('/kitchen/menu'),
+    addMenu: (body) => request('/kitchen/menu', { method: 'POST', body }),
+    updateMenu: (id, body) => request(`/kitchen/menu/${id}`, { method: 'PATCH', body }),
+    removeMenu: (id) => request(`/kitchen/menu/${id}`, { method: 'DELETE' }),
+    orders: () => request('/kitchen/orders'),
+    createOrder: (body) => request('/kitchen/orders', { method: 'POST', body }),
+    updateOrder: (id, body) => request(`/kitchen/orders/${id}`, { method: 'PATCH', body }),
   },
   guests: {
     list: (search) => request(`/guests${search ? `?search=${encodeURIComponent(search)}` : ''}`),
@@ -93,6 +112,8 @@ export const api = {
     rooms: () => request('/public/rooms'),
     profile: () => request('/public/profile'),
     enquire: (body) => request('/public/enquiries', { method: 'POST', body }),
+    lookup: ({ ref, phone, email }) => request(`/public/lookup?ref=${encodeURIComponent(ref || '')}&phone=${encodeURIComponent(phone || '')}&email=${encodeURIComponent(email || '')}`),
+    history: ({ phone, email, status, room, since }) => request(`/public/history?${new URLSearchParams({ phone: phone || '', email: email || '', status: status || '', room: room || '', since: since || '' }).toString()}`),
   },
 };
 

@@ -302,6 +302,21 @@ export default function Bookings({ onToast, prefill, onPrefillConsumed }) {
               <span>Total</span>
               <span style={{ color: 'var(--gold-2)' }}>{fmtINR(total)}</span>
             </div>
+            {nights >= 15 && (
+              <div style={{ marginTop: 10, padding: 10, background: 'var(--gold-soft)', border: '1px solid var(--gold-line)', borderRadius: 8, fontSize: 12, color: 'var(--gold-2)' }}>
+                <div style={{ fontWeight: 500, marginBottom: 4 }}>✦ Long-stay installment plan</div>
+                <div style={{ color: 'var(--ink-2)' }}>
+                  This {nights}-night stay qualifies for split payment. Two invoices will be created automatically:
+                  <div style={{ marginTop: 4 }}>
+                    • Advance 50% — {fmtINR(Math.round(amount * 0.5) + Math.round(Math.round(amount * 0.5) * 0.18))} now<br />
+                    • Balance 50% — {fmtINR(amount - Math.round(amount * 0.5) + (tax - Math.round(Math.round(amount * 0.5) * 0.18)))} at check-out
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--ink-3)' }}>
+                    Plus a complimentary hotel car can be requested under Vehicles.
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Modal>

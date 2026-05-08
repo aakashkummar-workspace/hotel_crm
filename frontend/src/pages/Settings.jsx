@@ -69,8 +69,14 @@ export default function Settings({ onToast, onProfileSaved }) {
       await api.settings.updateTax({
         room: Number(tax.room), cafe: Number(tax.cafe), hall: Number(tax.hall),
         invoice_prefix: tax.invoice_prefix, invoice_next: Number(tax.invoice_next),
+        late_grace_hours: Number(tax.late_grace_hours ?? 2),
+        late_rate_pct: Number(tax.late_rate_pct ?? 25),
+        std_checkout_time: tax.std_checkout_time || '11:00',
+        installment_min_nights: Number(tax.installment_min_nights ?? 15),
+        installment_advance_pct: Number(tax.installment_advance_pct ?? 50),
+        vehicle_min_nights: Number(tax.vehicle_min_nights ?? 15),
       });
-      onToast('Tax & invoice settings saved');
+      onToast('Tax & policy settings saved');
     } catch (e) { onToast(e.message || 'Could not save'); }
     finally { setSaving(false); }
   };
@@ -233,6 +239,45 @@ export default function Settings({ onToast, onProfileSaved }) {
                   <div style={{ flex: 1 }}><div className="label" style={{ marginBottom: 6 }}>Next number</div><input className="input" type="number" value={tax.invoice_next} onChange={e => setTax(t => ({ ...t, invoice_next: e.target.value }))} /></div>
                 </div>
               </div>
+
+              <div className="display" style={{ fontSize: 16, marginTop: 28, marginBottom: 6 }}>Late check-out</div>
+              <div style={{ color: 'var(--ink-3)', fontSize: 12, marginBottom: 14 }}>
+                Guests get a free grace window past the standard check-out time. After that, the hotel charges a pro-rated rate per hour.
+              </div>
+              <div className="row gap-3">
+                <div style={{ flex: 1 }}>
+                  <div className="label" style={{ marginBottom: 6 }}>Standard check-out time</div>
+                  <input className="input" placeholder="11:00" value={tax.std_checkout_time || '11:00'} onChange={e => setTax(t => ({ ...t, std_checkout_time: e.target.value }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="label" style={{ marginBottom: 6 }}>Free grace (hours)</div>
+                  <input className="input" type="number" min="0" max="24" value={tax.late_grace_hours ?? 2} onChange={e => setTax(t => ({ ...t, late_grace_hours: e.target.value }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="label" style={{ marginBottom: 6 }}>Rate per hour past grace (% of nightly)</div>
+                  <input className="input" type="number" min="0" max="200" value={tax.late_rate_pct ?? 25} onChange={e => setTax(t => ({ ...t, late_rate_pct: e.target.value }))} />
+                </div>
+              </div>
+
+              <div className="display" style={{ fontSize: 16, marginTop: 28, marginBottom: 6 }}>Long-stay benefits</div>
+              <div style={{ color: 'var(--ink-3)', fontSize: 12, marginBottom: 14 }}>
+                Stays of <em>installment-min-nights</em> or more automatically split into an Advance + Balance invoice and qualify for a complimentary hotel car.
+              </div>
+              <div className="row gap-3">
+                <div style={{ flex: 1 }}>
+                  <div className="label" style={{ marginBottom: 6 }}>Installment from (nights)</div>
+                  <input className="input" type="number" min="1" max="60" value={tax.installment_min_nights ?? 15} onChange={e => setTax(t => ({ ...t, installment_min_nights: e.target.value }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="label" style={{ marginBottom: 6 }}>Advance %</div>
+                  <input className="input" type="number" min="0" max="100" value={tax.installment_advance_pct ?? 50} onChange={e => setTax(t => ({ ...t, installment_advance_pct: e.target.value }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="label" style={{ marginBottom: 6 }}>Free vehicle from (nights)</div>
+                  <input className="input" type="number" min="1" max="60" value={tax.vehicle_min_nights ?? 15} onChange={e => setTax(t => ({ ...t, vehicle_min_nights: e.target.value }))} />
+                </div>
+              </div>
+
               <div className="row gap-3" style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
                 <button className="btn btn-primary" onClick={saveTax} disabled={saving}><Icon name="check" size={14} strokeWidth={2.4} />Save changes</button>
               </div>

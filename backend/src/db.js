@@ -144,6 +144,55 @@ export function initSchema() {
       target TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS vehicles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      plate TEXT,
+      capacity INTEGER NOT NULL DEFAULT 4,
+      status TEXT NOT NULL DEFAULT 'available',
+      image TEXT,
+      notes TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS vehicle_trips (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id TEXT NOT NULL REFERENCES vehicles(id),
+      booking_id TEXT,
+      guest TEXT,
+      driver TEXT,
+      purpose TEXT,
+      depart_at TEXT NOT NULL,
+      return_at TEXT NOT NULL,
+      fuel_cost INTEGER NOT NULL DEFAULT 0,
+      mileage INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'scheduled',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS kitchen_menu (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      price INTEGER NOT NULL,
+      description TEXT,
+      prep_minutes INTEGER NOT NULL DEFAULT 15,
+      emoji TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS kitchen_orders (
+      id TEXT PRIMARY KEY,
+      time TEXT NOT NULL,
+      items_count INTEGER NOT NULL,
+      total INTEGER NOT NULL,
+      type TEXT NOT NULL DEFAULT 'delivery',
+      status TEXT NOT NULL DEFAULT 'received',
+      customer TEXT,
+      address TEXT,
+      payment TEXT NOT NULL DEFAULT 'UPI',
+      items_json TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 }
 
@@ -162,6 +211,30 @@ export function runMigrations() {
   }
   if (!cols.includes('image_focus_y')) {
     db.exec('ALTER TABLE rooms ADD COLUMN image_focus_y INTEGER NOT NULL DEFAULT 50');
+  }
+
+  // Booking lifecycle additions
+  const bookCols = db.prepare("PRAGMA table_info(bookings)").all().map(c => c.name);
+  if (!bookCols.includes('checked_out_at')) {
+    db.exec('ALTER TABLE bookings ADD COLUMN checked_out_at TEXT');
+  }
+  if (!bookCols.includes('late_hours')) {
+    db.exec('ALTER TABLE bookings ADD COLUMN late_hours REAL NOT NULL DEFAULT 0');
+  }
+  if (!bookCols.includes('late_fee')) {
+    db.exec('ALTER TABLE bookings ADD COLUMN late_fee INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!bookCols.includes('vehicle_requested')) {
+    db.exec('ALTER TABLE bookings ADD COLUMN vehicle_requested INTEGER NOT NULL DEFAULT 0');
+  }
+
+  // Invoice metadata for installment plans
+  const invCols = db.prepare("PRAGMA table_info(invoices)").all().map(c => c.name);
+  if (!invCols.includes('booking_id')) {
+    db.exec("ALTER TABLE invoices ADD COLUMN booking_id TEXT");
+  }
+  if (!invCols.includes('note')) {
+    db.exec("ALTER TABLE invoices ADD COLUMN note TEXT");
   }
 }
 

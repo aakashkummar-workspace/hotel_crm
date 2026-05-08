@@ -6,6 +6,64 @@ import { toISO, rangesOverlap } from '../lib/dates.js';
 
 const BLOCKING_STATUSES = ['confirmed', 'checked-in', 'pending'];
 
+// Compute the late-checkout fee for a booking that's leaving past the
+// hotel's standard check-out time. Returns { hours, fee } where hours is
+// the number of hours past the grace window (zero if within grace).
+function computeLateFee(booking, nowISO) {
+  const get = (k) => db.prepare('SELECT value FROM settings WHERE key = ?').get(k)?.value;
+  const stdTime = get('std_checkout_time') || '11:00';
+  const grace = Number(get('late_grace_hours') || 2);
+  const ratePct = Number(get('late_rate_pct') || 25);
+  const checkoutISO = toISO(booking.checkout);
+  if (!checkoutISO) return { hours: 0, fee: 0 };
+  const [hh, mm] = stdTime.split(':').map(Number);
+  const stdAt = new Date(`${checkoutISO}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`);
+  const left = new Date(nowISO);
+  if (Number.isNaN(stdAt.getTime()) || Number.isNaN(left.getTime())) return { hours: 0, fee: 0 };
+  const diffMs = left - stdAt;
+  if (diffMs <= 0) return { hours: 0, fee: 0 };
+  const totalHours = diffMs / (1000 * 60 * 60);
+  const billable = Math.max(0, totalHours - grace);
+  if (billable <= 0) return { hours: 0, fee: 0 };
+  const room = db.prepare('SELECT * FROM rooms WHERE num = ?').get(booking.room);
+  const types = db.prepare('SELECT base_price FROM room_types WHERE id = ?').get(room?.type_id);
+  const nightly = (room?.price ?? types?.base_price ?? 0) || (booking.amount && booking.nights ? Math.round(booking.amount / booking.nights) : 0);
+  const perHour = (nightly * (ratePct / 100));
+  const fee = Math.round(billable * perHour);
+  return { hours: Number(billable.toFixed(2)), fee };
+}
+
+// When a stay qualifies for installments, generate an Advance + Balance
+// invoice pair right after the booking is created. Linked back to the
+// booking via invoices.booking_id so the staff side can show them together.
+function maybeCreateInstallment(booking) {
+  const get = (k) => db.prepare('SELECT value FROM settings WHERE key = ?').get(k)?.value;
+  const minNights = Number(get('installment_min_nights') || 15);
+  if ((booking.nights || 0) < minNights) return null;
+  const advancePct = Number(get('installment_advance_pct') || 50);
+  const taxRoom = Number(get('tax_room_pct') || 18);
+  const prefix = get('invoice_prefix') || 'INV-2026-';
+  const nextRow = db.prepare(`SELECT value FROM settings WHERE key = 'invoice_next'`).get();
+  let next = nextRow ? Number(nextRow.value) : 425;
+
+  const total = booking.amount;
+  const advanceAmount = Math.round(total * (advancePct / 100));
+  const balanceAmount = total - advanceAmount;
+  const advanceTax = Math.round(advanceAmount * (taxRoom / 100));
+  const balanceTax = Math.round(balanceAmount * (taxRoom / 100));
+
+  const advId = `${prefix}${String(next).padStart(4, '0')}`;
+  const balId = `${prefix}${String(next + 1).padStart(4, '0')}`;
+  db.prepare('INSERT INTO invoices (id, guest, date, amount, tax, total, status, method, booking_id, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(advId, booking.guest, booking.checkin, advanceAmount, advanceTax, advanceAmount + advanceTax,
+         'advance', '—', booking.id, `Advance ${advancePct}% for ${booking.id} (${booking.nights} nights)`);
+  db.prepare('INSERT INTO invoices (id, guest, date, amount, tax, total, status, method, booking_id, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(balId, booking.guest, booking.checkout, balanceAmount, balanceTax, balanceAmount + balanceTax,
+         'pending', '—', booking.id, `Balance ${100 - advancePct}% for ${booking.id}, due at check-out`);
+  db.prepare(`UPDATE settings SET value = ? WHERE key = 'invoice_next'`).run(String(next + 2));
+  return { advance_invoice: advId, balance_invoice: balId, advance_total: advanceAmount + advanceTax, balance_total: balanceAmount + balanceTax };
+}
+
 function findConflict(room, checkinISO, checkoutISO, ignoreId) {
   if (!checkinISO || !checkoutISO) return null;
   const others = db.prepare(
@@ -96,6 +154,7 @@ router.post('/', (req, res, next) => {
     ).get();
     const next = lastNumeric ? Number(lastNumeric.id.slice(3)) + 1 : 2851;
     const id = `BK-${next}`;
+    let installmentInfo = null;
     const tx = db.transaction(() => {
       db.prepare(
         `INSERT INTO bookings (id, guest, phone, email, room, checkin, checkout, nights, amount, status, source)
@@ -103,11 +162,37 @@ router.post('/', (req, res, next) => {
       ).run(id, body.guest, body.phone ?? null, body.email ?? null, body.room, body.checkin, body.checkout, body.nights, body.amount, body.status, body.source);
       upsertGuestFromBooking({ guest: body.guest, email: body.email, phone: body.phone, amount: body.amount });
       syncRoomFromBooking({ ...body, id });
+      installmentInfo = maybeCreateInstallment({ ...body, id });
+      if (installmentInfo) {
+        logActivity(req.user?.name, 'Auto-installment plan', `${id} · advance ${installmentInfo.advance_invoice} + balance ${installmentInfo.balance_invoice}`);
+      }
       logActivity(req.user?.name, 'Created booking', `${id} · ${body.guest}`);
     });
     tx();
-    res.status(201).json(db.prepare('SELECT * FROM bookings WHERE id = ?').get(id));
+    const created = db.prepare('SELECT * FROM bookings WHERE id = ?').get(id);
+    res.status(201).json({ ...created, installment: installmentInfo });
   } catch (e) { next(e); }
+});
+
+// Bookings whose check-out is today and are still checked-in past the
+// hotel's standard check-out time + grace, plus any that left today with a
+// late_fee already booked. Used by the dashboard to flag late check-outs.
+router.get('/late-today', (_req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const get = (k) => db.prepare('SELECT value FROM settings WHERE key = ?').get(k)?.value;
+  const stdTime = get('std_checkout_time') || '11:00';
+  const grace = Number(get('late_grace_hours') || 2);
+  const allCurrent = db.prepare(`SELECT * FROM bookings WHERE status = 'checked-in'`).all();
+  const nowISO = new Date().toISOString();
+  const flagged = allCurrent.map(b => {
+    const { hours, fee } = computeLateFee(b, nowISO);
+    return { ...b, projected_late_hours: hours, projected_late_fee: fee };
+  }).filter(b => {
+    const co = toISO(b.checkout);
+    return co && co <= today && b.projected_late_hours > 0;
+  });
+  const departedToday = db.prepare(`SELECT * FROM bookings WHERE status = 'checked-out' AND late_fee > 0 AND substr(checked_out_at, 1, 10) = ?`).all(today);
+  res.json({ flagged, departed: departedToday, std_checkout_time: stdTime, grace_hours: grace });
 });
 
 router.get('/:id', (req, res, next) => {
@@ -142,6 +227,16 @@ router.patch('/:id', (req, res, next) => {
       if (body.status && body.status !== existing.status) {
         syncRoomFromBooking(merged);
         logActivity(req.user?.name, 'Updated booking status', `${req.params.id} → ${body.status}`);
+        // On checkout, capture the time and compute any late fee.
+        if (body.status === 'checked-out') {
+          const nowISO = new Date().toISOString();
+          const { hours, fee } = computeLateFee(merged, nowISO);
+          db.prepare('UPDATE bookings SET checked_out_at = ?, late_hours = ?, late_fee = ? WHERE id = ?')
+            .run(nowISO, hours, fee, req.params.id);
+          if (fee > 0) {
+            logActivity(req.user?.name, 'Late check-out fee', `${req.params.id} · ${hours.toFixed(1)}h · ₹${fee}`);
+          }
+        }
       }
     });
     tx();

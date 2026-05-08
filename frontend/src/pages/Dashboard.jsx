@@ -257,14 +257,18 @@ export default function Dashboard({ onNavigate, onToast }) {
   const [busyId, setBusyId] = useState(null);
   const [kpiOpen, setKpiOpen] = useState(null);
 
+  const [lateCheckouts, setLateCheckouts] = useState({ flagged: [], departed: [], std_checkout_time: '11:00', grace_hours: 2 });
+
   const refresh = () => Promise.all([
     api.reports.summary(),
     api.bookings.list(),
     api.invoices.list(),
     api.coffee.orders(),
     api.hall.list(),
-  ]).then(([summary, b, inv, c, h]) => {
+    api.bookings.lateToday().catch(() => null),
+  ]).then(([summary, b, inv, c, h, lt]) => {
     setData(summary); setBookings(b); setInvoices(inv); setCoffee(c); setHall(h);
+    if (lt) setLateCheckouts(lt);
   });
   useEffect(() => { refresh(); }, []);
 
@@ -395,6 +399,34 @@ export default function Dashboard({ onNavigate, onToast }) {
         <ModuleCard title="Coffee Shop" icon="coffee" revenue={revenueModules[1]?.value || 0} sub={`${coffee.length} orders today · ${fmtINR(todayCoffee)}`} onClick={() => onNavigate('coffee')} />
         <ModuleCard title="Mini Hall" icon="users" revenue={revenueModules[2]?.value || 0} sub={`${hall.length} events booked`} onClick={() => onNavigate('hall')} />
       </div>
+
+      {/* Late check-outs today (only when there are any) */}
+      {(lateCheckouts.flagged.length > 0 || lateCheckouts.departed.length > 0) && (
+        <div className="card" style={{ padding: 18, marginBottom: 16, background: 'rgba(212,168,71,0.08)', borderColor: 'rgba(212,168,71,0.3)' }}>
+          <div className="row gap-2" style={{ alignItems: 'center', marginBottom: 10 }}>
+            <Icon name="flame" size={16} color="#e8c266" />
+            <div className="display" style={{ fontSize: 16, color: '#e8c266' }}>Late check-outs today</div>
+            <span className="badge badge-amber">{lateCheckouts.flagged.length + lateCheckouts.departed.length}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--ink-4)' }}>
+              Standard: {lateCheckouts.std_checkout_time} · {lateCheckouts.grace_hours}h grace
+            </span>
+          </div>
+          {lateCheckouts.flagged.map(b => (
+            <div key={b.id} className="row gap-3" style={{ padding: '8px 0', borderTop: '1px solid var(--line)', fontSize: 13 }}>
+              <span style={{ color: 'var(--ink)', fontWeight: 500, flex: 1 }}>{b.guest} <span style={{ color: 'var(--ink-4)', fontSize: 11, marginLeft: 6 }}>{b.id} · Room {b.room}</span></span>
+              <span style={{ color: 'var(--ink-3)', fontSize: 11 }}>{b.projected_late_hours.toFixed(1)}h past grace</span>
+              <span style={{ color: '#e8c266', fontWeight: 500 }}>{fmtINR(b.projected_late_fee)} due</span>
+            </div>
+          ))}
+          {lateCheckouts.departed.map(b => (
+            <div key={b.id} className="row gap-3" style={{ padding: '8px 0', borderTop: '1px solid var(--line)', fontSize: 13 }}>
+              <span style={{ color: 'var(--ink)', fontWeight: 500, flex: 1 }}>{b.guest} <span style={{ color: 'var(--ink-4)', fontSize: 11, marginLeft: 6 }}>{b.id} · Room {b.room}</span> <span style={{ marginLeft: 6, fontSize: 11, color: '#9bc497' }}>departed</span></span>
+              <span style={{ color: 'var(--ink-3)', fontSize: 11 }}>{(b.late_hours || 0).toFixed(1)}h late</span>
+              <span style={{ color: '#9bc497', fontWeight: 500 }}>{fmtINR(b.late_fee)} charged</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         <div className="card">

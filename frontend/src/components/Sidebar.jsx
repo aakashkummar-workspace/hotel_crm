@@ -9,7 +9,9 @@ const NAV_GROUPS = [
       { id: 'rooms', label: 'Rooms', icon: 'bed' },
       { id: 'bookings', label: 'Bookings', icon: 'calendar' },
       { id: 'coffee', label: 'Coffee Shop', icon: 'coffee' },
+      { id: 'kitchen', label: 'Cloud Kitchen', icon: 'utensils' },
       { id: 'hall', label: 'Mini Hall', icon: 'users' },
+      { id: 'vehicles', label: 'Vehicles', icon: 'car' },
     ],
   },
   {

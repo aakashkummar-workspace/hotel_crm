@@ -142,10 +142,15 @@ export function seed({ force = false } = {}) {
       DELETE FROM hall_bookings;
       DELETE FROM coffee_orders;
       DELETE FROM coffee_menu;
+      DELETE FROM kitchen_orders;
+      DELETE FROM kitchen_menu;
+      DELETE FROM vehicle_trips;
+      DELETE FROM vehicles;
       DELETE FROM bookings;
       DELETE FROM guests;
       DELETE FROM rooms;
       DELETE FROM room_types;
+      DELETE FROM activity;
       DELETE FROM settings;
       DELETE FROM users;
     `);
@@ -199,6 +204,28 @@ export function seed({ force = false } = {}) {
     setSetting.run('tax_hall_pct', '18');
     setSetting.run('invoice_prefix', 'INV-2026-');
     setSetting.run('invoice_next', '0425');
+    setSetting.run('late_grace_hours', '2');
+    setSetting.run('late_rate_pct', '25');
+    setSetting.run('std_checkout_time', '11:00');
+    setSetting.run('installment_min_nights', '15');
+    setSetting.run('installment_advance_pct', '50');
+    setSetting.run('vehicle_min_nights', '15');
+
+    const insertVehicle = db.prepare('INSERT INTO vehicles (id, name, plate, capacity, status, image, notes) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    insertVehicle.run('V-1', 'Sedan — Honda City', 'TN05 BK 2841', 4, 'available', 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80', 'White, automatic. Driver: Suresh.');
+    insertVehicle.run('V-2', 'SUV — Toyota Innova', 'TN05 BK 5612', 7, 'available', 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=900&q=80', 'Black, manual. Driver: Mani.');
+
+    const insertKitchenItem = db.prepare('INSERT INTO kitchen_menu (id, name, category, price, description, prep_minutes, emoji) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    [
+      { id: 'k-1', name: 'Andhra Chicken Biryani', category: 'Mains', price: 420, description: 'Dum-cooked, served with raita & gravy', prep_minutes: 25, emoji: '🍛' },
+      { id: 'k-2', name: 'Paneer Tikka Masala', category: 'Mains', price: 360, description: 'Smoked paneer in tomato-cashew gravy', prep_minutes: 20, emoji: '🍲' },
+      { id: 'k-3', name: 'Mutton Pepper Fry', category: 'Mains', price: 480, description: 'Chettinad-style, slow-cooked', prep_minutes: 30, emoji: '🥘' },
+      { id: 'k-4', name: 'Garlic Naan', category: 'Breads', price: 90, description: 'Tandoor-baked, brushed with butter', prep_minutes: 8, emoji: '🥖' },
+      { id: 'k-5', name: 'Ghee Roast Dosa', category: 'South Indian', price: 220, description: 'Crisp, with three chutneys & sambar', prep_minutes: 12, emoji: '🥞' },
+      { id: 'k-6', name: 'Hyderabadi Veg Biryani', category: 'Mains', price: 320, description: 'Vegetable dum biryani with mirchi salan', prep_minutes: 22, emoji: '🍚' },
+      { id: 'k-7', name: 'Dal Makhani', category: 'Mains', price: 280, description: 'Slow-simmered black dal, finished with cream', prep_minutes: 18, emoji: '🍲' },
+      { id: 'k-8', name: 'Gulab Jamun (2 pc)', category: 'Desserts', price: 120, description: 'Warm, with rabri', prep_minutes: 5, emoji: '🍮' },
+    ].forEach(it => insertKitchenItem.run(it.id, it.name, it.category, it.price, it.description, it.prep_minutes, it.emoji));
 
     const adminEmail = process.env.ADMIN_EMAIL || 'concierge@aurelia.in';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin12345';
