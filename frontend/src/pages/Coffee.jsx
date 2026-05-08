@@ -25,7 +25,7 @@ export default function Coffee({ onToast }) {
   const [showZReport, setShowZReport] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [itemForm, setItemForm] = useState({ name: '', category: 'Espresso', price: 0, description: '', emoji: '☕' });
+  const [itemForm, setItemForm] = useState({ name: '', category: 'Espresso', price: 0, description: '' });
   const [confirmDel, setConfirmDel] = useState(null);
 
   const submitMenuItem = async () => {
@@ -37,7 +37,7 @@ export default function Coffee({ onToast }) {
       else await api.coffee.addMenu(body);
       onToast?.(editingItem ? 'Menu item updated' : 'Menu item added');
       setEditingItem(null);
-      setItemForm({ name: '', category: itemForm.category, price: 0, description: '', emoji: '☕' });
+      setItemForm({ name: '', category: itemForm.category, price: 0, description: '' });
       refresh();
     } catch (e) { onToast?.(e.message || 'Could not save'); }
     finally { setBusy(false); }
@@ -135,12 +135,12 @@ export default function Coffee({ onToast }) {
                   style={{ padding: 14, textAlign: 'left', border: '1px solid var(--line)', cursor: 'pointer', transition: 'all .15s', background: 'var(--panel)' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--gold-line)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ fontSize: 24, marginBottom: 6 }}>{item.emoji}</div>
-                    <div style={{ fontSize: 13, color: 'var(--gold-2)', fontWeight: 500 }}>{fmtINR(item.price)}</div>
+                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+                    <div style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500 }}>{item.name}</div>
+                    <div style={{ fontSize: 13, color: 'var(--gold-2)', fontWeight: 500, whiteSpace: 'nowrap' }}>{fmtINR(item.price)}</div>
                   </div>
-                  <div style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500, marginTop: 4 }}>{item.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2, lineHeight: 1.4 }}>{item.description}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{item.category}</div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.4 }}>{item.description}</div>
                 </button>
               ))}
             </div>
@@ -175,7 +175,6 @@ export default function Coffee({ onToast }) {
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
               {cart.map(item => (
                 <div key={item.id} className="row gap-3" style={{ padding: '10px 20px' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--bg-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{item.emoji}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{item.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{fmtINR(item.price)} × {item.qty} = {fmtINR(item.price * item.qty)}</div>
@@ -254,7 +253,7 @@ export default function Coffee({ onToast }) {
 
       <Modal open={showMenu} onClose={() => { setShowMenu(false); setEditingItem(null); }} title="Manage café menu" width={620}
         footer={<>
-          <button className="btn btn-ghost" onClick={() => { setEditingItem(null); setItemForm({ name: '', category: 'Espresso', price: 0, description: '', emoji: '☕' }); }}>
+          <button className="btn btn-ghost" onClick={() => { setEditingItem(null); setItemForm({ name: '', category: 'Espresso', price: 0, description: '' }); }}>
             {editingItem ? 'New item' : 'Clear'}
           </button>
           <button className="btn btn-primary" onClick={submitMenuItem} disabled={busy}>
@@ -280,16 +279,10 @@ export default function Coffee({ onToast }) {
                 </select>
               </div>
             </div>
-            <div className="row gap-3">
-              <div style={{ flex: 1 }}>
-                <div className="label" style={{ marginBottom: 4 }}>Price (₹) *</div>
-                <input className="input" type="number" min="0"
-                  value={itemForm.price} onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))} />
-              </div>
-              <div style={{ width: 90 }}>
-                <div className="label" style={{ marginBottom: 4 }}>Emoji</div>
-                <input className="input" value={itemForm.emoji} onChange={e => setItemForm(f => ({ ...f, emoji: e.target.value }))} />
-              </div>
+            <div>
+              <div className="label" style={{ marginBottom: 4 }}>Price (₹) *</div>
+              <input className="input" type="number" min="0"
+                value={itemForm.price} onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))} />
             </div>
             <div style={{ marginTop: 10 }}>
               <div className="label" style={{ marginBottom: 4 }}>Description</div>
@@ -309,14 +302,13 @@ export default function Coffee({ onToast }) {
                   <div style={{ fontSize: 11, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{cat}</div>
                   {items.map(item => (
                     <div key={item.id} className="row gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-                      <span style={{ fontSize: 18 }}>{item.emoji}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{item.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--ink-4)' }}>{item.description || '—'}</div>
                       </div>
                       <span style={{ color: 'var(--gold-2)', fontWeight: 500, fontSize: 13 }}>{fmtINR(item.price)}</span>
                       <button className="btn btn-ghost btn-sm" title="Edit"
-                        onClick={() => { setEditingItem(item); setItemForm({ name: item.name, category: item.category, price: item.price, description: item.description || '', emoji: item.emoji || '' }); }}>
+                        onClick={() => { setEditingItem(item); setItemForm({ name: item.name, category: item.category, price: item.price, description: item.description || '' }); }}>
                         <Icon name="edit" size={12} />
                       </button>
                       <button className="btn btn-ghost btn-sm" title="Delete" onClick={() => setConfirmDel(item)}>
