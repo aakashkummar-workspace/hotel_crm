@@ -30,8 +30,13 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden; /* full-bleed sections use negative margins, suppress sideways scroll */
+  /* Hide the vertical scrollbar without disabling scrolling */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / legacy Edge */
 }
-html { overflow-x: hidden; }
+body::-webkit-scrollbar,
+html::-webkit-scrollbar { width: 0; height: 0; display: none; } /* Chrome / Safari */
+html { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
 ::selection { background: var(--gold); color: #fff; }
 button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
 input, select, textarea { font: inherit; color: inherit; }
