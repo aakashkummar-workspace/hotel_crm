@@ -177,6 +177,7 @@ function App() {
 
   const [rooms, setRooms] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [fleet, setFleet] = useState({ vehicles: [], free_from_nights: 15 });
   const [checkin, setCheckin] = useState(tomorrow);
   const [checkout, setCheckout] = useState(dayAfter);
   const [guests, setGuests] = useState({ adults: 2, children: 0, infants: 0 });
@@ -215,6 +216,7 @@ function App() {
       desc: TYPE_DESCS[r.type_id] || 'A thoughtfully restored room in the main residence.',
     }))));
     api.publicSite.profile().then(setProfile);
+    api.publicSite.vehicles().then(setFleet).catch(() => { /* no-op */ });
   }, []);
 
   // Keep the browser tab title in sync with the hotel name (so renaming the
@@ -312,6 +314,7 @@ function App() {
           <a href="#rooms-section">Rooms</a>
           <a href="#manage" onClick={() => { setMode('lookup'); setLookupResult(null); }}>Manage booking</a>
           <a href="#experiences">Experiences</a>
+          <a href="#transport">Transport</a>
           <a href="#story">Our Story</a>
           <a href="#reviews">Reviews</a>
         </div>
@@ -571,6 +574,41 @@ function App() {
           </div>
         </div>
       </section>
+
+      {fleet.vehicles.length > 0 && (
+        <section id="transport">
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Hotel transport</div>
+              <h2>From the airport,<br />or just down the coast.</h2>
+            </div>
+            <p>
+              Our drivers know every shortcut in Pondicherry. Rides can be booked from the front desk on arrival.
+              <br /><br />
+              <strong style={{ color: 'var(--gold)' }}>Stays of {fleet.free_from_nights} nights or more</strong> include a complimentary hotel car for sightseeing, the airport, or wherever the day takes you.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+            {fleet.vehicles.map(v => (
+              <article key={v.id} style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 20, overflow: 'hidden' }}>
+                <div style={{ aspectRatio: '4/3', backgroundImage: v.image ? `url(${v.image})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'var(--bg-3)', position: 'relative' }}>
+                  <span style={{ position: 'absolute', top: 14, left: 14, padding: '4px 10px', borderRadius: 999, background: 'var(--panel)', fontSize: 11, fontWeight: 500, color: v.status === 'available' ? 'var(--green)' : 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    {v.status === 'available' ? 'Available' : v.status}
+                  </span>
+                </div>
+                <div style={{ padding: '22px 24px 24px' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400, letterSpacing: '-0.01em', margin: 0, lineHeight: 1.1 }}>{v.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10, fontSize: 13, color: 'var(--ink-3)' }}>
+                    <span>{v.capacity} seats</span>
+                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-4)' }} />
+                    <span>Driver included</span>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section id="story">
         <div className="story">

@@ -34,6 +34,18 @@ router.get('/profile', (_req, res) => {
   res.json(row ? JSON.parse(row.value) : {});
 });
 
+// Public-safe view of the hotel's fleet — only fields a guest should see
+// (no driver names, no internal notes, no plate). Plus the policy thresholds
+// so the page can show "free for stays of N+ nights".
+router.get('/vehicles', (_req, res) => {
+  const get = (k) => db.prepare('SELECT value FROM settings WHERE key = ?').get(k)?.value;
+  const rows = db.prepare("SELECT id, name, capacity, image, status FROM vehicles ORDER BY id").all();
+  res.json({
+    vehicles: rows,
+    free_from_nights: Number(get('vehicle_min_nights') || 15),
+  });
+});
+
 const enquirySchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional().nullable(),

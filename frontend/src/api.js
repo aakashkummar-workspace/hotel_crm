@@ -111,6 +111,7 @@ export const api = {
   publicSite: {
     rooms: () => request('/public/rooms'),
     profile: () => request('/public/profile'),
+    vehicles: () => request('/public/vehicles'),
     enquire: (body) => request('/public/enquiries', { method: 'POST', body }),
     lookup: ({ ref, phone, email }) => request(`/public/lookup?ref=${encodeURIComponent(ref || '')}&phone=${encodeURIComponent(phone || '')}&email=${encodeURIComponent(email || '')}`),
     history: ({ phone, email, status, room, since }) => request(`/public/history?${new URLSearchParams({ phone: phone || '', email: email || '', status: status || '', room: room || '', since: since || '' }).toString()}`),
