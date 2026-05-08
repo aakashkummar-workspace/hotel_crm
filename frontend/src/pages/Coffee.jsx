@@ -16,6 +16,8 @@ function DailyStat({ label, value, sub }) {
 export default function Coffee({ onToast }) {
   const [menu, setMenu] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [guestNames, setGuestNames] = useState([]);
   const [category, setCategory] = useState('All');
   const [cart, setCart] = useState([]);
   const [tableNum, setTableNum] = useState('T2');
@@ -54,9 +56,18 @@ export default function Coffee({ onToast }) {
   };
 
   const refresh = async () => {
-    const [m, o] = await Promise.all([api.coffee.menu(), api.coffee.orders()]);
+    const [m, o, r, g] = await Promise.all([
+      api.coffee.menu(),
+      api.coffee.orders(),
+      api.rooms.list().catch(() => ({ rooms: [] })),
+      api.guests.list().catch(() => []),
+    ]);
     setMenu(m);
     setOrders(o);
+    setRooms(r.rooms || []);
+    // Combine guest names from CRM + bookings (deduped, sorted) for autocomplete.
+    const names = new Set((g || []).map(x => x.name).filter(Boolean));
+    setGuestNames([...names].sort());
   };
   useEffect(() => { refresh(); }, []);
 
@@ -154,11 +165,36 @@ export default function Coffee({ onToast }) {
               <Pill tone="amber">Open</Pill>
             </div>
             <div className="row gap-2" style={{ marginTop: 10 }}>
-              <select className="input" style={{ flex: 1 }} value={tableNum} onChange={e => setTableNum(e.target.value)}>
-                <option>T1</option><option>T2</option><option>T3</option><option>T4</option><option>T5</option>
-                <option>Takeaway</option><option>Room 101</option><option>Room 201</option>
+              <select className="input" style={{ flex: 1 }} value={tableNum}
+                onChange={e => {
+                  const v = e.target.value;
+                  setTableNum(v);
+                  // If picking an occupied/reserved room, auto-fill the customer
+                  if (v.startsWith('Room ')) {
+                    const num = v.replace('Room ', '');
+                    const r = rooms.find(x => x.num === num);
+                    if (r?.guest && !customer) setCustomer(r.guest);
+                  }
+                }}>
+                <optgroup label="Tables">
+                  <option>T1</option><option>T2</option><option>T3</option><option>T4</option><option>T5</option>
+                </optgroup>
+                <optgroup label="To-go">
+                  <option>Takeaway</option>
+                </optgroup>
+                <optgroup label="Rooms">
+                  {rooms.map(r => (
+                    <option key={r.num} value={`Room ${r.num}`}>
+                      Room {r.num}{r.guest ? ` — ${r.guest}` : (r.status === 'available' ? ' · empty' : ` · ${r.status}`)}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
-              <input className="input" placeholder="Customer" style={{ flex: 1 }} value={customer} onChange={e => setCustomer(e.target.value)} />
+              <input className="input" placeholder="Customer" list="coffee-customer-suggestions"
+                style={{ flex: 1 }} value={customer} onChange={e => setCustomer(e.target.value)} />
+              <datalist id="coffee-customer-suggestions">
+                {guestNames.map(n => <option key={n} value={n} />)}
+              </datalist>
             </div>
           </div>
 

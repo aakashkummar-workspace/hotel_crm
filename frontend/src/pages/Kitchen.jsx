@@ -23,10 +23,17 @@ export default function Kitchen({ onToast }) {
   const [editingItem, setEditingItem] = useState(null);
   const [itemForm, setItemForm] = useState(blankItem);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [guestNames, setGuestNames] = useState([]);
 
   const refresh = async () => {
-    const [m, o] = await Promise.all([api.kitchen.menu(), api.kitchen.orders()]);
+    const [m, o, g] = await Promise.all([
+      api.kitchen.menu(),
+      api.kitchen.orders(),
+      api.guests.list().catch(() => []),
+    ]);
     setMenu(m); setOrders(o);
+    const names = new Set((g || []).map(x => x.name).filter(Boolean));
+    setGuestNames([...names].sort());
   };
   useEffect(() => { refresh(); }, []);
 
@@ -178,7 +185,10 @@ export default function Kitchen({ onToast }) {
               </select>
             </div>
             <div className="col gap-2" style={{ marginTop: 10 }}>
-              <input className="input" placeholder="Customer name" value={customer} onChange={e => setCustomer(e.target.value)} />
+              <input className="input" placeholder="Customer name" list="kitchen-customer-suggestions" value={customer} onChange={e => setCustomer(e.target.value)} />
+              <datalist id="kitchen-customer-suggestions">
+                {guestNames.map(n => <option key={n} value={n} />)}
+              </datalist>
               {orderType === 'delivery' && <input className="input" placeholder="Delivery address" value={address} onChange={e => setAddress(e.target.value)} />}
             </div>
           </div>
