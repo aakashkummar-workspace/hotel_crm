@@ -35,7 +35,9 @@ runMigrations();
 const rowCount = db.prepare('SELECT COUNT(*) as c FROM rooms').get().c;
 if (rowCount === 0) {
   console.log('Empty database; seeding initial data…');
-  seed();
+  // Use force so any orphan rows in other tables (e.g. vehicles seeded
+  // by a previous run that didn't complete) are cleared first.
+  seed({ force: true });
 }
 
 const app = express();
