@@ -77,16 +77,16 @@ function DateRangePopover({ checkin, checkout, onChange, onClose }) {
   const next = new Date(month.getFullYear(), month.getMonth() + 1, 1);
 
   return (
-    <div ref={ref} className="popover" style={{ left: 0, right: 0, top: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+    <div ref={ref} className="popover popover-daterange" style={{ left: 0, top: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, gap: 16, flexWrap: 'wrap' }}>
         <button className="cal-nav" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
-        <div style={{ display: 'flex', gap: 12, fontSize: 13, color: 'var(--ink-3)' }}>
+        <div style={{ display: 'flex', gap: 12, fontSize: 13, color: 'var(--ink-3)', flex: 1, justifyContent: 'center' }}>
           {checkin && <span><strong style={{ color: 'var(--ink)' }}>{fmtDateLong(checkin)}</strong> → {checkout ? <strong style={{ color: 'var(--ink)' }}>{fmtDateLong(checkout)}</strong> : 'select check-out'}</span>}
           {!checkin && <span>Select your check-in date</span>}
         </div>
         <button className="cal-nav" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
       </div>
-      <div style={{ display: 'flex', gap: 32, justifyContent: 'center' }} onMouseLeave={() => setHover(null)}>
+      <div className="cal-pair" onMouseLeave={() => setHover(null)}>
         <Calendar month={month} checkin={checkin} checkout={checkout} onPick={pick} hover={hover} setHover={setHover} />
         <Calendar month={next} checkin={checkin} checkout={checkout} onPick={pick} hover={hover} setHover={setHover} />
       </div>

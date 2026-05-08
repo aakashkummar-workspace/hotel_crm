@@ -356,6 +356,24 @@ footer { background: var(--bg-2); border-top: 1px solid var(--line); padding: 60
 .footer-bot { max-width: 1280px; margin: 60px auto 0; padding-top: 24px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--ink-4); font-size: 13px; }
 
 .popover { position: absolute; z-index: 100; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; box-shadow: 0 28px 64px rgba(0,0,0,0.18); margin-top: 8px; }
+
+/* Date-range popover holds two side-by-side months. The default popover
+   inherits the parent .bw-field width (~250 px), so size it explicitly. */
+.popover-daterange {
+  width: 660px;
+  max-width: calc(100vw - 40px);
+}
+.cal-pair {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 720px) {
+  .popover-daterange { width: 320px; }
+  .cal-pair { gap: 18px; }
+  .cal-pair > div + div { display: none; } /* show only one month on tiny screens */
+}
 .cal { display: grid; grid-template-columns: repeat(7, 36px); gap: 4px; }
 .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .cal-head .month { font-family: var(--font-display); font-size: 17px; font-weight: 500; }
